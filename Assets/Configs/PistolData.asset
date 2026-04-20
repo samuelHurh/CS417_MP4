@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88330eb4fa33d2a4a8bb4b1d82eec050, type: 3}
+  m_Name: PistolData
+  m_EditorClassIdentifier: Assembly-CSharp::JerryScripts.Feature.WeaponHandling.WeaponData
+  _weaponName: Pistol
+  _weaponType: 0
+  _rarity: 0
+  _baseDamage: 20
+  _roundsPerMinute: 180
+  _maxRange: 50
+  _magCapacity: 12
+  _magazinePersistSeconds: 8
+  _magSpawnDelay: 0.2
+  _grabRadius: 0.15
+  _holsterSnapRadius: 0.15
+  _magInsertionRadius: 0.05
+  _recoilPitchBase: 4
+  _recoilYawSpread: 1.5
+  _recoilRecoveryTime: 0.18
+  _hapticFireAmplitude: 0.8
+  _hapticFireDuration: 0.04
+  _hapticDryFireAmplitude: 0.2
+  _magazinePrefab: {fileID: 8544979627806492323, guid: 223614ea5858a1548bc13f7d0f8598c7, type: 3}
+  _muzzleFlashPrefab: {fileID: 0}

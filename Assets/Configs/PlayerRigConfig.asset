@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b42fcc6dcea76d847b2b0b86d7085fa5, type: 3}
+  m_Name: PlayerRigConfig
+  m_EditorClassIdentifier: Assembly-CSharp::JerryScripts.Foundation.PlayerRigConfig
+  _trackingConfirmDelay: 0.5
+  _hitboxRadius: 0.25
+  _hitboxHeight: 1.7
+  _hitboxCenterY: 0.85
+  _moveSpeed: 2
+  _snapTurnAngle: 45
