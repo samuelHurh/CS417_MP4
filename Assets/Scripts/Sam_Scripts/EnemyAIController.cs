@@ -150,7 +150,7 @@ public class EnemyAIController : MonoBehaviour
     {
         squadManager = manager;
         squadBlackboard = blackboard;
-        playerTarget = player;
+        //playerTarget = player;
         anchorPoint = anchor;
 
         if (roleBrain != null)
@@ -164,7 +164,7 @@ public class EnemyAIController : MonoBehaviour
     // This function replaces the player target used for perception and navigation.
     public void SetPlayerTarget(Transform target)
     {
-        playerTarget = target;
+        //playerTarget = target;
     }
 
     // This function swaps the active role brain and re-initializes it against this controller.
@@ -352,23 +352,30 @@ public class EnemyAIController : MonoBehaviour
 
         if (sqrDistanceToPlayer > sightRange * sightRange)
         {
+            //Debug.Log("Player not in range");
             return false;
         }
+        //Debug.Log("Player in range");
 
         float angleToPlayer = Vector3.Angle(EyePoint.forward, toPlayer);
         if (angleToPlayer > sightAngle * 0.5f)
         {
+            //Debug.Log("Angle bad");
             return false;
         }
+        //Debug.Log("angle good");
+
+        Debug.DrawRay(eyePosition, toPlayer.normalized * sightRange, Color.red);
 
         if (Physics.Raycast(eyePosition, toPlayer.normalized, out RaycastHit hit, sightRange, sightBlockers))
         {
             if (hit.transform == playerTarget || hit.transform.IsChildOf(playerTarget))
             {
+                Debug.Log("Can Engage Player");
                 visiblePlayerPosition = playerTarget.position;
                 return true;
             }
-
+            Debug.Log(hit.transform.name);
             return false;
         }
 
