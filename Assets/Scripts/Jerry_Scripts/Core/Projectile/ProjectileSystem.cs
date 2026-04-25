@@ -1,4 +1,5 @@
 using JerryScripts.Feature.WeaponHandling;
+using JerryScripts.Foundation.Audio;
 using JerryScripts.Foundation.Damage;
 using UnityEngine;
 
@@ -53,6 +54,12 @@ namespace JerryScripts.Core.Projectile
         /// </summary>
         private RaycastHit _hitResult;
 
+        /// <summary>
+        /// Audio Feedback Service resolved at Awake. Null-safe — PostFeedbackEvent is
+        /// skipped when absent (consistent with PlayerRig / ProjectileSystem pattern). S1-006.
+        /// </summary>
+        private IAudioFeedbackService _audioService;
+
         // ===================================================================
         // Unity lifecycle
         // ===================================================================
@@ -62,6 +69,9 @@ namespace JerryScripts.Core.Projectile
             // Auto-resolve DamageResolver if not inspector-wired
             if (_damageResolver == null)
                 _damageResolver = FindAnyObjectByType<DamageResolver>();
+
+            // Auto-resolve Audio Feedback Service (S1-006). Null-safe.
+            _audioService = FindAnyObjectByType<AudioFeedbackService>();
 
             ValidateReferences();
         }
@@ -110,13 +120,12 @@ namespace JerryScripts.Core.Projectile
             IHittable hittable = _hitResult.collider.GetComponentInParent<IHittable>();
             hittable?.TakeDamage(in dmg);
 
-            // --- Hit confirmation audio stub (S1-006) ---
-            // TODO (S1-006): IAudioFeedbackService.PostFeedbackEvent(HitConfirmation, hitPos, finalDamage)
-            Debug.Log(
-                $"[ProjectileSystem] Hitscan hit '{_hitResult.collider.name}'. " +
-                $"FinalDamage={dmg.FinalDamage:F1} at {_hitResult.point}. " +
-                "PostFeedbackEvent(HitConfirmation) stub — wire AudioFeedbackService in S1-006.",
-                this);
+            // --- Hit confirmation audio (S1-006) ---
+            _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                eventType: FeedbackEvent.HitConfirmation,
+                position:  _hitResult.point,
+                magnitude: dmg.FinalDamage,
+                hand:      FeedbackHand.None));
 
             return true;
         }

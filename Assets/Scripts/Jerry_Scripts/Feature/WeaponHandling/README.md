@@ -118,15 +118,15 @@ not yet written. Each stub is clearly marked with its target system:
 
 | TODO location | Target system | GDD reference |
 |---|---|---|
-| `ExecuteFire()` — FireHitscan call | Projectile System | GDD Rule 6 |
-| `ExecuteFire()` — Fire SFX | Audio/Feedback System | GDD Rule 7 |
-| `ExecuteFire()` — Muzzle flash VFX | VFX (instantiate prefab from WeaponData) | GDD §Visual/Audio |
-| `OnTriggerPerformed()` — dry-fire click | Audio/Feedback System | GDD Rule 8 |
-| `BeginReload()` — mag drop SFX | Audio/Feedback System | GDD §Visual/Audio |
-| `BeginReload()` — offhand mag spawn coroutine | WeaponInstance internal | GDD Rule 10 |
-| `CompleteReload()` — insertion click + haptic | Audio/Feedback System | GDD §Visual/Audio |
-| `SnapToMount()` — holster click SFX | Audio/Feedback System | GDD §Visual/Audio |
-| `OnSecondaryButtonPerformed()` — slide SFX + haptic | Audio/Feedback System | GDD Rule 12 |
+| ~~`ExecuteFire()` — FireHitscan call~~ | ✅ Wired in S1-005 | GDD Rule 6 |
+| ~~`ExecuteFire()` — Fire SFX~~ | ✅ Wired in S1-006 (`AudioFeedbackService` `WeaponFire`) | GDD Rule 7 |
+| ~~`ExecuteFire()` — Muzzle flash VFX~~ | ✅ Wired in S1-007 (`MuzzleFlashPool.Spawn`) | GDD §Visual/Audio |
+| ~~`OnTriggerPerformed()` — dry-fire click~~ | ✅ Wired in S1-006 (`AudioFeedbackService` `WeaponDryFire`) | GDD Rule 8 |
+| `BeginReload()` — mag drop SFX | Audio/Feedback System (S1-009) | GDD §Visual/Audio |
+| `BeginReload()` — offhand mag spawn coroutine | WeaponInstance internal (S2-001) | GDD Rule 10 |
+| `CompleteReload()` — insertion click + haptic | Audio/Feedback System (S2-001) | GDD §Visual/Audio |
+| `SnapToMount()` — holster click SFX | Audio/Feedback System (S1-009) | GDD §Visual/Audio |
+| `OnSecondaryButtonPerformed()` — slide SFX + haptic | Audio/Feedback System (S2-001) | GDD Rule 12 |
 
 The mag-well proximity check (triggering `CompleteReload()`) requires a separate
 `MagWellSocket` component (or an `XRSocketInteractor`) on the `MagWell` Transform.
@@ -146,3 +146,42 @@ Create the following layers in **Edit > Project Settings > Tags and Layers**:
 
 Set the XR Direct / Ray Interactors on both hand controllers to include the
 `Weapon` interaction layer.
+
+---
+
+## 8. MuzzleFlashPool (S1-007)
+
+Place a `MuzzleFlashPool` component in the scene so `WeaponInstance` can resolve it on `Awake`.
+
+### Scene wiring
+
+In `Jerry_Scene.unity`, on the `_Systems` GameObject (alongside `AudioFeedbackService` / `ProjectileSystem` / `DamageResolver`):
+
+1. **Add Component > Muzzle Flash Pool**.
+2. **Inspector → Flash Prefab**: assign a ParticleSystem prefab (see "Placeholder prefab" below).
+3. **Inspector → Pool Size**: leave default `6` (covers semi-auto rate-of-fire with headroom; raise to 12+ if rapid fire ever exhausts it).
+
+`WeaponInstance.Awake()` auto-resolves the pool via `FindAnyObjectByType<MuzzleFlashPool>()`. No inspector wiring needed on weapon prefabs.
+
+### Placeholder prefab
+
+For MVP, any small ParticleSystem works. Quickest path:
+
+1. **GameObject > Effects > Particle System** to create a default particle in the scene.
+2. Tweak it: small `Start Lifetime` (~0.05s), small `Start Size` (~0.05), high `Start Speed` (~3), Emission Rate over Time = 0, Emission Burst = 1 burst of 8–15 particles.
+3. **Important:** the `MuzzleFlashPool` automatically sets `MainModule.stopAction = ParticleSystemStopAction.Disable` on each pooled instance, so the pooled GO disables itself when emission completes — no coroutine, no Update tick. Don't fight this in the prefab.
+4. Drag the GameObject into the Project to make a prefab. Delete the scene instance.
+5. Assign the prefab to `MuzzleFlashPool._flashPrefab`.
+
+Final-art muzzle flash with proper textures and lighting is post-MVP.
+
+### Per-weapon flash variation (NOT implemented for MVP)
+
+`WeaponData.MuzzleFlashPrefab` exists as a forward-compatibility field but is currently **not read** by `WeaponInstance`. The pool uses one global prefab for all weapons. Per-weapon variation (e.g., bigger flash for rifles) is post-MVP — when implemented, the pool will need to be keyed by prefab and swap based on `WeaponData`.
+
+### Validation
+
+- [ ] `_Systems` GO has `MuzzleFlashPool` component
+- [ ] `_flashPrefab` slot points at a ParticleSystem prefab
+- [ ] On fire: console silent (no errors), particle effect spawns and disables itself within ~100ms
+- [ ] `MuzzleFlashPoolTests` 4/4 green in EditMode

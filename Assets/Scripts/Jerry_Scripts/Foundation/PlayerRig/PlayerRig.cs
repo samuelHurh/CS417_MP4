@@ -90,6 +90,26 @@ namespace JerryScripts.Foundation
         public event Action OnRigDeactivated;
 
         // ===================================================================
+        // Damage reception — S1-008
+        // ===================================================================
+
+        /// <summary>
+        /// Fired when the player's hitbox receives damage from an enemy source.
+        /// Passes the resolved <c>FinalDamage</c> float (already clamped by the
+        /// <see cref="JerryScripts.Foundation.Damage.IDamageResolver"/>).
+        ///
+        /// <para>Subscribe here (not on <see cref="PlayerHitbox"/>) for rig-level
+        /// consumers such as a health system, death trigger, or screen-space VFX.
+        /// Sam's Enemy System and any HUD overlay should subscribe to this event.</para>
+        ///
+        /// <para>The event is forwarded from <see cref="PlayerHitbox.OnDamageReceived"/>
+        /// which is connected in <see cref="ConnectHitboxRelay"/>. Player-sourced damage
+        /// is already filtered out before this event fires.</para>
+        /// </summary>
+        /// <remarks>S1-008. GDD: player-rig.md §Damage Reception.</remarks>
+        public event Action<float> OnDamageReceived;
+
+        // ===================================================================
         // IRigControllerProvider
         // ===================================================================
 
@@ -342,6 +362,29 @@ namespace JerryScripts.Foundation
 
             if (hitboxLayer != -1)
                 hitboxGO.layer = hitboxLayer;
+
+            // Add the IHittable relay component and subscribe to its event (S1-008).
+            // PlayerHitbox.TakeDamage filters player-source events before firing;
+            // we simply forward the resulting float to any rig-level subscribers.
+            ConnectHitboxRelay(hitboxGO);
+        }
+
+        // ===================================================================
+        // Hitbox relay — S1-008
+        // ===================================================================
+
+        /// <summary>
+        /// Adds a <see cref="PlayerHitbox"/> component to <paramref name="hitboxGO"/>
+        /// and wires its <see cref="PlayerHitbox.OnDamageReceived"/> event to
+        /// <see cref="OnDamageReceived"/> on this rig.
+        ///
+        /// Called once from <see cref="SetupDamageCollider"/>; split into its own
+        /// method so the connection logic is independently readable and testable.
+        /// </summary>
+        private void ConnectHitboxRelay(GameObject hitboxGO)
+        {
+            PlayerHitbox hitbox = hitboxGO.AddComponent<PlayerHitbox>();
+            hitbox.OnDamageReceived += damage => OnDamageReceived?.Invoke(damage);
         }
 
         // ===================================================================

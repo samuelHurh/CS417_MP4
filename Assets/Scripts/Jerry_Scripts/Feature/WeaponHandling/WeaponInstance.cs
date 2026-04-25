@@ -1,10 +1,9 @@
 using JerryScripts.Core.Projectile;
 using JerryScripts.Foundation;
+using JerryScripts.Foundation.Audio;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Inputs.Haptics;
-
 namespace JerryScripts.Feature.WeaponHandling
 {
     /// <summary>
@@ -88,6 +87,18 @@ namespace JerryScripts.Feature.WeaponHandling
         /// </summary>
         private IProjectileService _projectileService;
 
+        /// <summary>
+        /// Audio Feedback Service resolved at Awake. Null-safe — audio calls are skipped
+        /// (with a debug log) when the service is absent. S1-006.
+        /// </summary>
+        private IAudioFeedbackService _audioService;
+
+        /// <summary>
+        /// Muzzle Flash Pool resolved at Awake. Null-safe — VFX spawn is silently skipped
+        /// when the pool is absent (headless tests, scenes without the _Systems GO). S1-007.
+        /// </summary>
+        private MuzzleFlashPool _muzzleFlashPool;
+
         // ===================================================================
         // Private — runtime tracking
         // ===================================================================
@@ -130,6 +141,14 @@ namespace JerryScripts.Feature.WeaponHandling
             // Auto-resolve Projectile System (S1-005). Null-safe — hitscan is skipped
             // until the system is present in the scene (consistent with PlayerRig pattern).
             _projectileService = FindAnyObjectByType<ProjectileSystem>();
+
+            // Auto-resolve Audio Feedback Service (S1-006). Null-safe — audio calls are
+            // skipped until the service is present in the scene.
+            _audioService = FindAnyObjectByType<AudioFeedbackService>();
+
+            // Auto-resolve Muzzle Flash Pool (S1-007). Null-safe — VFX spawn is skipped
+            // until the pool is present in the scene (same pattern as AudioFeedbackService).
+            _muzzleFlashPool = FindAnyObjectByType<MuzzleFlashPool>();
 
             ValidateReferences();
 
@@ -251,9 +270,12 @@ namespace JerryScripts.Feature.WeaponHandling
 
             if (CurrentAmmo <= 0)
             {
-                // Dry-fire (GDD Rule 8)
-                TriggerHaptic(_data.HapticDryFireAmplitude, _data.HapticFireDuration);
-                // TODO: Audio system call — dry-fire click SFX
+                // Dry-fire (GDD Rule 8) — haptic handled by S1-010; audio posted here (S1-006)
+                _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                    FeedbackEvent.WeaponDryFire,
+                    _muzzleTransform != null ? _muzzleTransform.position : transform.position,
+                    0f,
+                    _heldInRightHand ? FeedbackHand.Right : FeedbackHand.Left));
                 return;
             }
 
@@ -309,11 +331,22 @@ namespace JerryScripts.Feature.WeaponHandling
                     this);
             }
 
-            // TODO (S1-006): IAudioFeedbackService.PostFeedbackEvent(WeaponFire, _muzzleTransform.position)
-            // TODO (VFX): Muzzle flash VFX spawn at _muzzleTransform
+            // Audio: 3D gunshot at muzzle position (S1-006)
+            if (_muzzleTransform != null)
+            {
+                _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                    FeedbackEvent.WeaponFire,
+                    _muzzleTransform.position,
+                    _data != null ? _data.BaseDamage : 0f,
+                    _heldInRightHand ? FeedbackHand.Right : FeedbackHand.Left));
+            }
 
-            // Haptic (GDD Rule 7)
-            TriggerHaptic(_data.HapticFireAmplitude, _data.HapticFireDuration);
+            // Muzzle flash VFX — spawned BEFORE ApplyRecoilKick() so position/rotation
+            // are captured from the pre-recoil muzzle transform (GDD Rule 15). S1-007.
+            if (_muzzleTransform != null)
+            {
+                _muzzleFlashPool?.Spawn(_muzzleTransform.position, _muzzleTransform.rotation);
+            }
 
             // Recoil (GDD Rules 15–16) — applied after hitscan sample
             ApplyRecoilKick();
@@ -557,21 +590,6 @@ namespace JerryScripts.Feature.WeaponHandling
         {
             return _rigStateProvider == null ||
                    _rigStateProvider.CurrentState == RigState.Active;
-        }
-
-        // ===================================================================
-        // Haptics
-        // ===================================================================
-
-        private void TriggerHaptic(float amplitude, float duration)
-        {
-            if (_rigControllerProvider == null || _data == null) return;
-
-            HapticImpulsePlayer hapticPlayer = _heldInRightHand
-                ? _rigControllerProvider.RightHaptics
-                : _rigControllerProvider.LeftHaptics;
-
-            hapticPlayer?.SendHapticImpulse(amplitude, duration);
         }
 
         // ===================================================================

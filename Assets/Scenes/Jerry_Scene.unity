@@ -1241,6 +1241,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1907364921}
   - component: {fileID: 1907364920}
+  - component: {fileID: 1907364922}
+  - component: {fileID: 1907364923}
+  - component: {fileID: 1907364924}
   m_Layer: 0
   m_Name: SystemManager
   m_TagString: Untagged
@@ -1276,6 +1279,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1907364922
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907364919}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bc72ebb17bf15847811314b7a8ee0a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Core.Projectile.ProjectileSystem
+  _damageResolver: {fileID: 1907364920}
+  _enemyHitboxMask:
+    serializedVersion: 2
+    m_Bits: 256
+  _defaultHitscanRange: 100
+--- !u!114 &1907364923
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907364919}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dcc58d9b781b7cd489029deb8d6dc46b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Foundation.Audio.AudioFeedbackService
+  _config: {fileID: 11400000, guid: f7e18d49c16809d43b01d72a4c9df5f8, type: 2}
+--- !u!114 &1907364924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1907364919}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 683aaf57c550ac94ca2b9e2459197415, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Feature.WeaponHandling.MuzzleFlashPool
+  _flashPrefab: {fileID: 0}
+  _poolSize: 6
 --- !u!1 &1940108342
 GameObject:
   m_ObjectHideFlags: 0

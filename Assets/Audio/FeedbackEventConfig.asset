@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a86827a7e25627343ba42bc00af72505, type: 3}
+  m_Name: FeedbackEventConfig
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Foundation.Audio.FeedbackEventConfig
+  _entries:
+  - EventType: 0
+    Clips: []
+    MixerGroup: {fileID: -1767244879716619872, guid: d429945277db30945921660d28445840, type: 2}
+    SpatialBlend: 1
+    Volume: 1
+    BasePitch: 1
+    PitchVariance: 0.04
+    HapticAmplitude: 0.8
+    HapticDuration: 0.04
+  - EventType: 15
+    Clips: []
+    MixerGroup: {fileID: -7300573685191645138, guid: d429945277db30945921660d28445840, type: 2}
+    SpatialBlend: 0
+    Volume: 0.8
+    BasePitch: 1
+    PitchVariance: 0
+    HapticAmplitude: 0
+    HapticDuration: 0
+  - EventType: 1
+    Clips: []
+    MixerGroup: {fileID: -2000938079326354775, guid: d429945277db30945921660d28445840, type: 2}
+    SpatialBlend: 0
+    Volume: 0.7
+    BasePitch: 1
+    PitchVariance: 0.08
+    HapticAmplitude: 0.3
+    HapticDuration: 0.02
+  - EventType: 8
+    Clips: []
+    MixerGroup: {fileID: -944825686676380511, guid: d429945277db30945921660d28445840, type: 2}
+    SpatialBlend: 1
+    Volume: 0.7
+    BasePitch: 1
+    PitchVariance: 0.08
+    HapticAmplitude: 0.9
+    HapticDuration: 0.2
+  _hitConfirmDamageCap: 330
+  _hitConfirmPitchFloor: 0.9
+  _hitConfirmPitchCeiling: 1.4
+  _poolSize: 8
