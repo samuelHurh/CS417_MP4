@@ -16,7 +16,7 @@ S1-006 | Owner: Jerry Chen | Depends on: Foundation/PlayerRig (S1-001)
 |-------|---------|-------|
 | `WeaponFire` | `WeaponFire` event | Loud, foreground. No ducking in MVP. |
 | `HitConfirmation` | `HitConfirmation` event | 2D ear-space cue. |
-| `DryFire` | `WeaponDryFire` event | Quieter, weapon-attached feel. |
+| `WeaponSecondary` | `WeaponDryFire`, `MagDrop`, `WeaponHolster`, `DamageReceived` events (S1-009 + S1-008) | Catch-all for non-fire weapon/feedback events. Renamed from `DryFire` once S1-008 + S1-009 added more events. |
 
 The full GDD specifies 5 mixer groups (Master / Weapons / Combat / Player Feedback / Environment / UI). Ducking and the remaining 2 groups are deferred — for MVP, the 3 groups above are sufficient.
 
@@ -36,7 +36,10 @@ Add **3 entries** to the `Entries` list:
 |-----------|--------------|------------|-----------|---------------|--------|-----------------|----------------|-------|
 | `WeaponFire` | `1.0` (3D) | `WeaponFire` group | `1.0` | `0.04` (±4 cents per GDD) | `1.0` | `0.8` | `0.04` | 2–4 gunshot variants |
 | `HitConfirmation` | `0.0` (2D) | `HitConfirmation` group | `1.0` (overridden by formula) | `0.0` (formula only) | `0.8` | `0.0` | `0.0` | 1–3 hit ping variants |
-| `WeaponDryFire` | `0.0` (2D) | `DryFire` group | `1.0` | `0.08` (±8 cents per GDD) | `0.7` | `0.3` | `0.02` | 1–3 dry-click variants |
+| `WeaponDryFire` | `0.0` (2D) | `WeaponSecondary` group | `1.0` | `0.08` (±8 cents per GDD) | `0.7` | `0.3` | `0.02` | 1–3 dry-click variants |
+| `MagDrop` (S1-009) | `1.0` (3D) | `WeaponSecondary` group | `1.0` | `0.04` | `1.0` | `0.0` (no haptic) | `0.0` | optional |
+| `WeaponHolster` (S1-009) | `0.0` (2D) | `WeaponSecondary` group | `1.0` | `0.02` | `0.8` | `0.0` (no haptic) | `0.0` | optional |
+| `DamageReceived` (S1-008) | `1.0` (3D) | `WeaponSecondary` group | `1.0` | `0.0` | `1.0` | `0.9` | `0.2` | optional |
 
 Clips can be left empty for now — the service logs a `[AudioFeedbackService] Event has no AudioClips` warning per missing entry on startup, and `PostFeedbackEvent` warns and returns silently. Game still runs.
 
@@ -93,7 +96,7 @@ Never call `SendHapticImpulse` from `WeaponInstance`, `ProjectileSystem`, or any
 - [ ] `AudioFeedbackService._config` slot points at the config asset
 - [ ] `RarityMultiplierTable.PlayerDamageCap` and `FeedbackEventConfig.HitConfirmDamageCap` agree (both `330`)
 - [ ] PIE starts with up to **16 `LogWarning` lines** — one for each deferred `FeedbackEvent` enum value that has no `EventEntry` row yet (`MagDrop`, `MagSpawn`, `MagInsertion`, `SlideRack`, `WeaponGrab`, `WeaponHolster`, `DamageReceived`, `PlayerDeath`, `RoomTransitionStart`, `RoomTransitionEnd`, `PauseActivated`, `SnapTurn`, `TrackingLost`, `EnemyNearMiss`, `CurrencyPickup`, `TrackingRestored`). Plus up to 3 more if your configured entries have empty `Clips` arrays. **By design — they're a dev aid, not bugs. Zero errors.**
-- [ ] Test Runner > EditMode > Run All shows **30/30 green** (12 DamageResolver + 2 Projectile contract + 12 Audio + 4 MuzzleFlashPool)
+- [ ] Test Runner > EditMode > Run All shows **76/76 green** (12 DamageResolver + 2 Projectile contract + 12 Audio + 4 MuzzleFlashPool + 5 PlayerHitbox + 5 MagDropPool + 5 MagSpawnPool + 5 MagWellSocket + 5 WeaponInstanceReload + 21 PlayerStateManager)
 
 ---
 

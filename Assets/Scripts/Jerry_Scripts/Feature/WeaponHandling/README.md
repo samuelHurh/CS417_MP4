@@ -90,7 +90,7 @@ Create: `Assets > Create > JerryScripts > Weapon Data` → name it `PistolData`.
 |---|---|---|
 | Weapon Name | `Pistol` | |
 | Weapon Type | `Pistol` | |
-| Rarity | `Common` | |
+| Rarity | `Basic` | 4-tier enum: Basic/Rare/Epic/Legendary (`Common` was removed in S1-004 GDD reconciliation — do not use) |
 | Base Damage | `20` | |
 | Rounds Per Minute | `180` | → 0.333s fire interval |
 | Max Range | `50` | metres |
@@ -103,11 +103,11 @@ Create: `Assets > Create > JerryScripts > Weapon Data` → name it `PistolData`.
 | Recoil Pitch Base | `4` | degrees |
 | Recoil Yaw Spread | `1.5` | degrees half-angle |
 | Recoil Recovery Time | `0.18` | seconds |
-| Haptic Fire Amplitude | `0.8` | 0–1 |
-| Haptic Fire Duration | `0.04` | seconds |
-| Haptic Dry Fire Amplitude | `0.2` | 0–1 |
-| Magazine Prefab | `MagazineProp.prefab` | assign when available; optional for prototype |
-| Muzzle Flash Prefab | `MuzzleFlash.prefab` | assign when available; optional for prototype |
+| Haptic Fire Amplitude | `0.8` | **Forward-compat only.** Post-S1-006 cleanup, haptics are dispatched by `AudioFeedbackService` reading `FeedbackEventConfig.EventEntry.HapticAmplitude`. This field is NOT read in MVP. |
+| Haptic Fire Duration | `0.04` | Same — forward-compat. Use `FeedbackEventConfig` instead. |
+| Haptic Dry Fire Amplitude | `0.2` | Same — forward-compat. Use `FeedbackEventConfig` instead. |
+| Magazine Prefab | leave empty | **Not read in MVP.** `MagDropPool._magPrefab` is the global mag prefab. Per-weapon mag variation is post-MVP. |
+| Muzzle Flash Prefab | leave empty | **Not read in MVP.** `MuzzleFlashPool._flashPrefab` is the global flash prefab. Per-weapon flash variation is post-MVP. |
 
 ---
 
@@ -122,10 +122,10 @@ not yet written. Each stub is clearly marked with its target system:
 | ~~`ExecuteFire()` — Fire SFX~~ | ✅ Wired in S1-006 (`AudioFeedbackService` `WeaponFire`) | GDD Rule 7 |
 | ~~`ExecuteFire()` — Muzzle flash VFX~~ | ✅ Wired in S1-007 (`MuzzleFlashPool.Spawn`) | GDD §Visual/Audio |
 | ~~`OnTriggerPerformed()` — dry-fire click~~ | ✅ Wired in S1-006 (`AudioFeedbackService` `WeaponDryFire`) | GDD Rule 8 |
-| `BeginReload()` — mag drop SFX | Audio/Feedback System (S1-009) | GDD §Visual/Audio |
+| ~~`BeginReload()` — mag drop SFX~~ | ✅ Wired in S1-009 (`AudioFeedbackService` `MagDrop`) | GDD §Visual/Audio |
 | `BeginReload()` — offhand mag spawn coroutine | WeaponInstance internal (S2-001) | GDD Rule 10 |
 | `CompleteReload()` — insertion click + haptic | Audio/Feedback System (S2-001) | GDD §Visual/Audio |
-| `SnapToMount()` — holster click SFX | Audio/Feedback System (S1-009) | GDD §Visual/Audio |
+| ~~`SnapToMount()` — holster click SFX~~ | ✅ Wired in S1-009 (`AudioFeedbackService` `WeaponHolster`) | GDD §Visual/Audio |
 | `OnSecondaryButtonPerformed()` — slide SFX + haptic | Audio/Feedback System (S2-001) | GDD Rule 12 |
 
 The mag-well proximity check (triggering `CompleteReload()`) requires a separate
@@ -185,3 +185,57 @@ Final-art muzzle flash with proper textures and lighting is post-MVP.
 - [ ] `_flashPrefab` slot points at a ParticleSystem prefab
 - [ ] On fire: console silent (no errors), particle effect spawns and disables itself within ~100ms
 - [ ] `MuzzleFlashPoolTests` 4/4 green in EditMode
+
+---
+
+## 9. MagDropPool (S1-009)
+
+Place a `MagDropPool` component in the scene so `WeaponInstance.BeginReload` can drop magazines without `Instantiate`/`Destroy`.
+
+### Scene wiring
+
+In `Jerry_Scene.unity`, on the `_Systems` GameObject (alongside `MuzzleFlashPool` / `AudioFeedbackService` / `ProjectileSystem` / `DamageResolver`):
+
+1. **Add Component > Mag Drop Pool**
+2. **Inspector → Mag Prefab**: assign a Rigidbody+Collider mag prefab (see "Placeholder prefab" below)
+3. **Inspector → Pool Size**: leave default `4` (covers semi-auto reload cadence; one held + 3 dropped before recycle)
+4. **Inspector → Persist Seconds**: leave default `8` (matches GDD `magazine_persist_seconds`)
+
+`WeaponInstance.Awake()` auto-resolves the pool via `FindAnyObjectByType<MagDropPool>()`. No inspector wiring needed on the weapon prefab.
+
+### Placeholder prefab
+
+For MVP, a simple cube with Rigidbody works:
+
+1. `GameObject > 3D Object > Cube`
+2. Scale to roughly mag dimensions: `(0.04, 0.10, 0.06)`
+3. Add `Rigidbody` component:
+   - `Mass` = `0.2`
+   - `Use Gravity` = `true`
+   - `Is Kinematic` = `true` (the pool toggles this on `Eject`)
+   - `Interpolate` = `Interpolate`
+   - `Collision Detection` = `Continuous Dynamic`
+4. Keep the auto-added `BoxCollider`
+5. Optional: add a dark material so it's visually distinct from the floor
+6. Drag the GO from Hierarchy into `CS417_MP4/Assets/Prefabs/`, name it `Magazine.prefab`
+7. Delete the scene instance
+8. Assign the prefab to `MagDropPool._magPrefab`
+
+### How the pool works
+
+- 4 mag instances are pre-warmed at scene `Awake` as children of the pool, all deactivated and kinematic
+- `Eject(Vector3 position, Quaternion rotation, float persistSeconds)`: round-robin pick the next slot, un-parent it (so physics isn't influenced by `_Systems` transform), reposition + reorient, activate, set `isKinematic = false`, clear velocities, schedule recycle via `Invoke` after `persistSeconds`
+- After persist time: `Recycle` reactivates kinematic, re-parents to pool root, deactivates GO. Mag is back in the rotation
+- If the player drops 5 mags in 8 seconds, the 5th drop triggers a recycle of the 1st one (visible as the original mag teleporting back to the gun before being re-ejected — acceptable for MVP)
+
+### Per-weapon mag variation (NOT implemented for MVP)
+
+`WeaponData.MagazinePrefab` is forward-compat only. Don't expect a rifle to drop a different mag than a pistol in MVP. Post-MVP enhancement: pool keyed by prefab.
+
+### Validation
+
+- [ ] `_Systems` GO has `MagDropPool` component
+- [ ] `_magPrefab` slot points at a Rigidbody+Collider mag prefab
+- [ ] On primary button press while pistol held: mag visibly drops with physics, `MagDrop` audio plays at mag well position
+- [ ] After 8 seconds: dropped mag disappears (recycled, NOT destroyed — Hierarchy still shows 4 children of `MagDropPool`)
+- [ ] `MagDropPoolTests` 5/5 green in EditMode

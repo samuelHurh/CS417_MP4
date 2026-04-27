@@ -11,6 +11,11 @@ namespace JerryScripts.Feature.WeaponHandling
     /// Owns the weapon FSM (<see cref="WeaponInstanceState"/>), ammo tracking,
     /// recoil, and all XRI grab/drop callbacks.
     ///
+    /// <para>Implements <see cref="IMagInsertReceiver"/> — the
+    /// <see cref="MagWellSocket"/> component on this prefab calls
+    /// <see cref="CompleteReload"/> when the player's off-hand magazine enters
+    /// the mag-well proximity radius.</para>
+    ///
     /// <para><b>Dependencies (injected via inspector — no Find() calls):</b></para>
     /// <list type="bullet">
     ///   <item><see cref="WeaponData"/> — stat source of truth</item>
@@ -26,7 +31,7 @@ namespace JerryScripts.Feature.WeaponHandling
     [RequireComponent(typeof(UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable))]
     [RequireComponent(typeof(Rigidbody))]
     [DisallowMultipleComponent]
-    public sealed class WeaponInstance : MonoBehaviour
+    public sealed class WeaponInstance : MonoBehaviour, IMagInsertReceiver
     {
         // ===================================================================
         // Inspector fields
@@ -99,6 +104,24 @@ namespace JerryScripts.Feature.WeaponHandling
         /// </summary>
         private MuzzleFlashPool _muzzleFlashPool;
 
+        /// <summary>
+        /// Mag Drop Pool resolved at Awake. Null-safe — magazine eject falls back to a
+        /// single-frame disappear (no physics drop) when the pool is absent. S1-009.
+        /// </summary>
+        private MagDropPool _magDropPool;
+
+        /// <summary>
+        /// Mag Spawn Pool resolved at Awake. Null-safe — off-hand magazine spawn is
+        /// skipped when the pool is absent. S2-001.
+        /// </summary>
+        private MagSpawnPool _magSpawnPool;
+
+        /// <summary>
+        /// Mag Well Socket resolved at Awake via GetComponent on this same GO.
+        /// Enabled/disabled to gate the per-frame proximity check only while Reloading.
+        /// </summary>
+        private MagWellSocket _magWellSocket;
+
         // ===================================================================
         // Private — runtime tracking
         // ===================================================================
@@ -149,6 +172,17 @@ namespace JerryScripts.Feature.WeaponHandling
             // Auto-resolve Muzzle Flash Pool (S1-007). Null-safe — VFX spawn is skipped
             // until the pool is present in the scene (same pattern as AudioFeedbackService).
             _muzzleFlashPool = FindAnyObjectByType<MuzzleFlashPool>();
+
+            // Auto-resolve Mag Drop Pool (S1-009). Null-safe — magazine eject is skipped
+            // (no physics drop) until the pool is present in the scene.
+            _magDropPool = FindAnyObjectByType<MagDropPool>();
+
+            // Auto-resolve Mag Spawn Pool (S2-001). Null-safe — off-hand magazine spawn
+            // is skipped until the pool is present in the scene.
+            _magSpawnPool = FindAnyObjectByType<MagSpawnPool>();
+
+            // Resolve MagWellSocket on this same GO — optional, no error if absent.
+            _magWellSocket = GetComponent<MagWellSocket>();
 
             ValidateReferences();
 
@@ -301,7 +335,13 @@ namespace JerryScripts.Feature.WeaponHandling
             if (CurrentState != WeaponInstanceState.SlideBack) return;
             if (!IsRigActive()) return;
 
-            // TODO: Audio system call — slide rack SFX + haptic
+            // Slide rack: 3D audio at mag-well position + haptic (GDD row 5, S2-001)
+            _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                eventType: FeedbackEvent.SlideRack,
+                position:  _magWellTransform != null ? _magWellTransform.position : transform.position,
+                magnitude: 0f,
+                hand:      _heldInRightHand ? FeedbackHand.Right : FeedbackHand.Left));
+
             EnterState(WeaponInstanceState.Held);
         }
 
@@ -363,33 +403,58 @@ namespace JerryScripts.Feature.WeaponHandling
         {
             EnterState(WeaponInstanceState.Reloading);
 
-            // Drop current magazine with physics
-            if (_data.MagazinePrefab != null)
+            // Drop current magazine with physics via pool (GDD Rule 11 — no Instantiate/Destroy
+            // in the combat loop). MagDropPool is resolved at Awake; null-safe if absent.
+            if (_magDropPool != null && _magWellTransform != null && _data != null)
             {
-                // Instantiate the ejected magazine at the mag-well position
-                var ejectedMag = Instantiate(
-                    _data.MagazinePrefab,
+                _magDropPool.Eject(
                     _magWellTransform.position,
-                    _magWellTransform.rotation);
-
-                // Enable physics so it falls
-                var rb = ejectedMag.GetComponent<Rigidbody>();
-                if (rb != null) rb.isKinematic = false;
-
-                // Auto-destroy after persist time (GDD Rule 11)
-                Destroy(ejectedMag, _data.MagazinePersistSeconds);
+                    _magWellTransform.rotation,
+                    _data.MagazinePersistSeconds);
+            }
+            else if (_magDropPool == null)
+            {
+                Debug.LogWarning(
+                    "[WeaponInstance] MagDropPool not resolved — magazine will not drop with physics. " +
+                    "Ensure a MagDropPool component is present on the _Systems GO. S1-009.",
+                    this);
             }
 
-            // TODO: Audio system call — mag drop SFX
-            // TODO: Spawn fresh magazine on offhand after _data.MagSpawnDelay seconds (Coroutine, owned by this class)
+            // MagDrop audio (3D positional, no haptic per GDD row 3). S1-009.
+            _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                eventType: FeedbackEvent.MagDrop,
+                position:  _magWellTransform != null ? _magWellTransform.position : transform.position,
+                magnitude: 0f,
+                hand:      FeedbackHand.None));
 
-            // NOTE: Transition to Held or SlideBack happens when mag-well proximity is detected.
-            // That logic is triggered by the magazine prefab reporting back (or a separate
-            // MagWellSocket component calling CompleteReload on this WeaponInstance).
+            // Spawn fresh magazine on off-hand after _data.MagSpawnDelay seconds (S2-001).
+            // Resolves the off-hand attach point from the rig's mount point provider.
+            // Null-safe — skipped if pool or rig are absent.
+            if (_magSpawnPool != null && _mountPointProvider != null && _data != null)
+            {
+                Transform offHand = _heldInRightHand
+                    ? _mountPointProvider.LeftHipHolster   // off-hand = left when right is holding
+                    : _mountPointProvider.RightHipHolster; // off-hand = right when left is holding
+
+                _magSpawnPool.Spawn(offHand, _data.MagSpawnDelay);
+
+                // Audio: off-hand magazine materialises (2D, no haptic per GDD row 4). S2-001.
+                _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                    eventType: FeedbackEvent.MagSpawn,
+                    position:  transform.position,
+                    magnitude: 0f,
+                    hand:      FeedbackHand.None));
+            }
+
+            // Enable the mag-well socket proximity check — it will call CompleteReload
+            // when the player brings the magazine to the mag well.
+            if (_magWellSocket != null)
+                _magWellSocket.enabled = true;
         }
 
         /// <summary>
-        /// Called by the mag-well socket component when a magazine is inserted.
+        /// Called by <see cref="MagWellSocket"/> (via <see cref="IMagInsertReceiver"/>)
+        /// when the off-hand magazine enters the mag-well proximity radius.
         /// Resets ammo and advances the FSM per GDD Rules 10 and 12.
         /// </summary>
         public void CompleteReload()
@@ -402,9 +467,18 @@ namespace JerryScripts.Feature.WeaponHandling
                 return;
             }
 
-            CurrentAmmo = _data.MagCapacity;
+            CurrentAmmo = _data != null ? _data.MagCapacity : 0;
 
-            // TODO: Audio system call — mag insertion click SFX + haptic pulse
+            // Magazine insertion: click SFX + haptic pulse (GDD row 6, S2-001).
+            _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                eventType: FeedbackEvent.MagInsertion,
+                position:  _magWellTransform != null ? _magWellTransform.position : transform.position,
+                magnitude: 0f,
+                hand:      _heldInRightHand ? FeedbackHand.Right : FeedbackHand.Left));
+
+            // Disable the proximity socket — no longer needed until the next reload.
+            if (_magWellSocket != null)
+                _magWellSocket.enabled = false;
 
             // GDD Rule 12: tactical reload (was not empty) skips slide-back
             if (_wasEmptyBeforeReload)
@@ -456,7 +530,13 @@ namespace JerryScripts.Feature.WeaponHandling
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
 
-            // TODO: Audio system call — holster click SFX
+            // Holster click audio (2D, no haptic per GDD row 8). S1-009.
+            _audioService?.PostFeedbackEvent(new FeedbackEventData(
+                eventType: FeedbackEvent.WeaponHolster,
+                position:  transform.position,
+                magnitude: 0f,
+                hand:      FeedbackHand.None));
+
             EnterState(WeaponInstanceState.Holstered);
         }
 
@@ -666,6 +746,12 @@ namespace JerryScripts.Feature.WeaponHandling
 
             if (_secondaryButtonAction == null)
                 Debug.LogWarning("[WeaponInstance] SecondaryButtonAction is not assigned — slide rack will not work.", this);
+
+            if (_magSpawnPool == null)
+                Debug.LogWarning(
+                    "[WeaponInstance] MagSpawnPool not resolved — off-hand magazine will not spawn. " +
+                    "Ensure a MagSpawnPool component is present on the _Systems GO. S2-001.",
+                    this);
         }
     }
 }
