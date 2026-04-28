@@ -69,6 +69,12 @@ namespace JerryScripts.Foundation
         [Tooltip("SnapTurnProvider in the rig hierarchy (optional — leave null to skip angle sync).")]
         [SerializeField] private SnapTurnProvider _snapTurnProvider;
 
+        [Header("Extra Components to Disable on Pause/Death")]
+        [Tooltip("Any additional MonoBehaviours to disable when the rig is not Active " +
+                 "(e.g. jump provider, teleport provider). Drag them here. " +
+                 "They will be re-enabled when the rig returns to Active.")]
+        [SerializeField] private MonoBehaviour[] _disableOnPause;
+
         [Header("Pause Input")]
         [Tooltip("InputActionReference that maps to the pause gesture (e.g. menu button press).")]
         [SerializeField] private InputActionReference _pauseAction;
@@ -156,6 +162,7 @@ namespace JerryScripts.Foundation
         private Coroutine _trackingConfirmCoroutine;
         private CapsuleCollider _hitboxCollider;
         private bool _rigReadyFired;
+        private float _enableTime;
 
         // ===================================================================
         // Unity lifecycle
@@ -170,6 +177,11 @@ namespace JerryScripts.Foundation
 
         private void OnEnable()
         {
+            // Record enable time — ignore pause input for 0.5s after scene load
+            // to prevent stale button state from the previous scene triggering
+            // an immediate pause on the freshly loaded scene.
+            _enableTime = Time.unscaledTime;
+
             // Subscribe to pause input
             if (_pauseAction != null)
             {
@@ -243,32 +255,32 @@ namespace JerryScripts.Foundation
 
         private void ApplyStateEffects(RigState state)
         {
+            bool active = (state == RigState.Active);
+
             switch (state)
             {
                 case RigState.Active:
-                    // Re-enable locomotion providers if they exist
                     if (_continuousMoveProvider != null) _continuousMoveProvider.enabled = true;
                     if (_snapTurnProvider != null)       _snapTurnProvider.enabled       = true;
                     break;
 
                 case RigState.Paused:
                 case RigState.Dead:
-                    // Freeze locomotion so player cannot move during pause/death
-                    if (_continuousMoveProvider != null) _continuousMoveProvider.enabled = false;
-                    if (_snapTurnProvider != null)       _snapTurnProvider.enabled       = false;
-                    break;
-
                 case RigState.Initializing:
-                    // Locomotion disabled until tracking is confirmed
-                    if (_continuousMoveProvider != null) _continuousMoveProvider.enabled = false;
-                    if (_snapTurnProvider != null)       _snapTurnProvider.enabled       = false;
-                    break;
-
                 case RigState.Transitioning:
-                    // All input blocked during room transitions (Room Management system owns entry/exit).
                     if (_continuousMoveProvider != null) _continuousMoveProvider.enabled = false;
                     if (_snapTurnProvider != null)       _snapTurnProvider.enabled       = false;
                     break;
+            }
+
+            // Toggle any extra components listed in the Inspector (jump provider, etc.)
+            if (_disableOnPause != null)
+            {
+                for (int i = 0; i < _disableOnPause.Length; i++)
+                {
+                    if (_disableOnPause[i] != null)
+                        _disableOnPause[i].enabled = active;
+                }
             }
         }
 
@@ -278,6 +290,11 @@ namespace JerryScripts.Foundation
 
         private void OnPausePerformed(InputAction.CallbackContext _)
         {
+            // Ignore pause input for 0.5s after OnEnable — prevents stale button
+            // state from a previous scene (before SceneManager.LoadScene) from
+            // immediately pausing the freshly loaded scene.
+            if (Time.unscaledTime - _enableTime < 0.5f) return;
+
             switch (CurrentState)
             {
                 case RigState.Active:
@@ -305,6 +322,19 @@ namespace JerryScripts.Foundation
             // AND the configured stabilisation delay has elapsed.
             float elapsed = 0f;
             float requiredDelay = _config != null ? _config.TrackingConfirmDelay : 0.5f;
+
+            // On scene reload, tracking is already established and
+            // trackingOriginUpdated may not fire again. Check if any XR
+            // input subsystem is already running — if so, skip waiting.
+            SubsystemManager.GetSubsystems(_inputSubsystems);
+            foreach (var subsystem in _inputSubsystems)
+            {
+                if (subsystem.running)
+                {
+                    _trackingOriginReceived = true;
+                    break;
+                }
+            }
 
             while (!_trackingOriginReceived || elapsed < requiredDelay)
             {

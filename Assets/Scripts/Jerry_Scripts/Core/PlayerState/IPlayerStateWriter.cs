@@ -36,6 +36,14 @@ namespace JerryScripts.Core.PlayerState
         void RequestRestart();
 
         /// <summary>
+        /// Resumes gameplay from the <see cref="PlayerState.Paused"/> state.
+        /// Transitions to <see cref="PlayerState.Running"/> and tells the rig to
+        /// return to <see cref="RigState.Active"/>.
+        /// No-op if not currently paused.
+        /// </summary>
+        void RequestResume();
+
+        /// <summary>
         /// Requests an application quit. Calls <c>Application.Quit()</c> in a player
         /// build; a no-op in the Editor (Unity does not support quitting in-editor).
         /// </summary>

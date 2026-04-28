@@ -55,6 +55,10 @@ namespace JerryScripts.Feature.WeaponHandling
         [Tooltip("Mag-well socket transform. Magazine proximity is tested against this.")]
         [SerializeField] private Transform _magWellTransform;
 
+        [Header("Visuals")]
+        [Tooltip("Renderer for the magazine mesh on the pistol model. Disabled on eject, re-enabled on reload complete.")]
+        [SerializeField] private Renderer _magMeshRenderer;
+
         [Header("Input — Holding Hand")]
         [Tooltip("InputActionReference bound to the primary button (magazine release).")]
         [SerializeField] private InputActionReference _primaryButtonAction;
@@ -74,6 +78,22 @@ namespace JerryScripts.Feature.WeaponHandling
 
         /// <summary>Rounds currently loaded in the magazine (0 to <see cref="WeaponData.MagCapacity"/>).</summary>
         public int CurrentAmmo { get; private set; }
+
+        /// <summary>Magazine capacity from <see cref="WeaponData.MagCapacity"/>. 0 if no data assigned.</summary>
+        public int MagCapacity => _data != null ? _data.MagCapacity : 0;
+
+        /// <summary>
+        /// Fired whenever <see cref="CurrentAmmo"/> changes (fire, reload, init).
+        /// Args: (currentAmmo, magCapacity). HUD subscribes to display ammo count.
+        /// </summary>
+        public event System.Action<int, int> OnAmmoChanged;
+
+        /// <summary>
+        /// Fired when the weapon is grabbed or released by the player.
+        /// Arg: <c>true</c> = equipped (grabbed), <c>false</c> = unequipped (released/dropped/holstered).
+        /// HUD subscribes to show/hide ammo display.
+        /// </summary>
+        public event System.Action<bool> OnEquipChanged;
 
         // ===================================================================
         // Private — cached references
@@ -135,6 +155,9 @@ namespace JerryScripts.Feature.WeaponHandling
         /// <summary>Whether <see cref="CurrentAmmo"/> was 0 when the reload began (slide-back required).</summary>
         private bool _wasEmptyBeforeReload;
 
+        /// <summary>True when rig is not Active — blocks grab/release/input processing.</summary>
+        private bool _pauseFrozen;
+
         // ===================================================================
         // Recoil state
         // ===================================================================
@@ -190,6 +213,8 @@ namespace JerryScripts.Feature.WeaponHandling
             if (_data != null)
                 CurrentAmmo = _data.MagCapacity;
 
+            OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
+
             // Begin holstered at scene start
             EnterState(WeaponInstanceState.Holstered);
         }
@@ -242,16 +267,22 @@ namespace JerryScripts.Feature.WeaponHandling
 
             SubscribeInputActions();
             EnterState(WeaponInstanceState.Held);
+            OnEquipChanged?.Invoke(true);
+            OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
         }
 
         private void OnReleased(SelectExitEventArgs args)
         {
+            // Block release during pause — weapon stays locked in hand.
+            if (_pauseFrozen) return;
+
             if (CurrentState == WeaponInstanceState.Held ||
                 CurrentState == WeaponInstanceState.Firing ||
                 CurrentState == WeaponInstanceState.Reloading ||
                 CurrentState == WeaponInstanceState.SlideBack)
             {
                 UnsubscribeInputActions();
+                OnEquipChanged?.Invoke(false);
                 EvaluateDropDestination();
             }
         }
@@ -302,9 +333,16 @@ namespace JerryScripts.Feature.WeaponHandling
             if (CurrentState != WeaponInstanceState.Held) return;
             if (!IsRigActive()) return;
 
+            // Rate-limit both live fire and dry fire to prevent spam from
+            // Value/Axis trigger actions that emit multiple performed events
+            // per physical pull.
+            float timeSinceLastShot = Time.time - _lastShotTime;
+            if (_data != null && timeSinceLastShot < _data.FireInterval) return;
+
             if (CurrentAmmo <= 0)
             {
                 // Dry-fire (GDD Rule 8) — haptic handled by S1-010; audio posted here (S1-006)
+                _lastShotTime = Time.time;
                 _audioService?.PostFeedbackEvent(new FeedbackEventData(
                     FeedbackEvent.WeaponDryFire,
                     _muzzleTransform != null ? _muzzleTransform.position : transform.position,
@@ -312,9 +350,6 @@ namespace JerryScripts.Feature.WeaponHandling
                     _heldInRightHand ? FeedbackHand.Right : FeedbackHand.Left));
                 return;
             }
-
-            float timeSinceLastShot = Time.time - _lastShotTime;
-            if (timeSinceLastShot < _data.FireInterval) return;
 
             ExecuteFire();
         }
@@ -355,6 +390,7 @@ namespace JerryScripts.Feature.WeaponHandling
 
             CurrentAmmo = Mathf.Max(0, CurrentAmmo - 1);
             _lastShotTime = Time.time;
+            OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
 
             // Hitscan direction captured HERE, before recoil is applied (GDD Rule 15).
             // _muzzleTransform.position/forward are read before ApplyRecoilKick() mutates
@@ -403,6 +439,10 @@ namespace JerryScripts.Feature.WeaponHandling
         {
             EnterState(WeaponInstanceState.Reloading);
 
+            // Magazine ejected — ammo is 0 until CompleteReload refills it.
+            CurrentAmmo = 0;
+            OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
+
             // Drop current magazine with physics via pool (GDD Rule 11 — no Instantiate/Destroy
             // in the combat loop). MagDropPool is resolved at Awake; null-safe if absent.
             if (_magDropPool != null && _magWellTransform != null && _data != null)
@@ -420,6 +460,10 @@ namespace JerryScripts.Feature.WeaponHandling
                     this);
             }
 
+            // Hide the pistol's magazine mesh (visual feedback that the mag was ejected).
+            if (_magMeshRenderer != null)
+                _magMeshRenderer.enabled = false;
+
             // MagDrop audio (3D positional, no haptic per GDD row 3). S1-009.
             _audioService?.PostFeedbackEvent(new FeedbackEventData(
                 eventType: FeedbackEvent.MagDrop,
@@ -427,14 +471,15 @@ namespace JerryScripts.Feature.WeaponHandling
                 magnitude: 0f,
                 hand:      FeedbackHand.None));
 
-            // Spawn fresh magazine on off-hand after _data.MagSpawnDelay seconds (S2-001).
-            // Resolves the off-hand attach point from the rig's mount point provider.
+            // Spawn fresh magazine on off-hand controller after _data.MagSpawnDelay seconds
+            // (S2-001). Uses the off-hand controller transform so the mag appears held in
+            // the player's other hand, not floating at a hip holster.
             // Null-safe — skipped if pool or rig are absent.
-            if (_magSpawnPool != null && _mountPointProvider != null && _data != null)
+            if (_magSpawnPool != null && _rigControllerProvider != null && _data != null)
             {
                 Transform offHand = _heldInRightHand
-                    ? _mountPointProvider.LeftHipHolster   // off-hand = left when right is holding
-                    : _mountPointProvider.RightHipHolster; // off-hand = right when left is holding
+                    ? _rigControllerProvider.LeftControllerTransform
+                    : _rigControllerProvider.RightControllerTransform;
 
                 _magSpawnPool.Spawn(offHand, _data.MagSpawnDelay);
 
@@ -468,6 +513,11 @@ namespace JerryScripts.Feature.WeaponHandling
             }
 
             CurrentAmmo = _data != null ? _data.MagCapacity : 0;
+            OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
+
+            // Re-enable the pistol's magazine mesh (visual: mag is back in the weapon).
+            if (_magMeshRenderer != null)
+                _magMeshRenderer.enabled = true;
 
             // Magazine insertion: click SFX + haptic pulse (GDD row 6, S2-001).
             _audioService?.PostFeedbackEvent(new FeedbackEventData(
@@ -656,13 +706,27 @@ namespace JerryScripts.Feature.WeaponHandling
 
         private void OnRigStateChanged(RigState newRigState)
         {
-            // If rig dies or pauses while weapon is held, lock interaction
-            if (newRigState != RigState.Active &&
-                CurrentState == WeaponInstanceState.Held)
+            if (newRigState != RigState.Active)
             {
-                // Disable input receipt without changing weapon FSM state —
-                // the weapon remains "Held" but trigger/buttons do nothing
-                // (IsRigActive() check guards every action).
+                // Pause/death: unsubscribe input and set frozen flag.
+                // Do NOT disable XRGrabInteractable — that causes XRI to
+                // force-release the grab, dropping the weapon.
+                _pauseFrozen = true;
+                UnsubscribeInputActions();
+            }
+            else
+            {
+                // Returning to Active: clear frozen flag and re-subscribe
+                // input if weapon is still held.
+                _pauseFrozen = false;
+
+                if (CurrentState == WeaponInstanceState.Held ||
+                    CurrentState == WeaponInstanceState.Firing ||
+                    CurrentState == WeaponInstanceState.Reloading ||
+                    CurrentState == WeaponInstanceState.SlideBack)
+                {
+                    SubscribeInputActions();
+                }
             }
         }
 
