@@ -1,13 +1,31 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class ShooterRoleBrain : EnemyRoleBrain
 {
-    // This distance defines the outer edge of the shooter's preferred firing band.
-    [SerializeField] private float preferredRange = 8f;
-    // This distance defines when the shooter feels too close to the player and should reposition.
-    [SerializeField] private float minimumRange = 4f;
+    [SerializeField] private Transform eyePoint;
+    [SerializeField] private LayerMask lineOfSightMask = Physics.DefaultRaycastLayers;
+    [SerializeField] private float minDist;
+    [SerializeField] private float maxDist;
 
-    // This function applies ranged positioning and firing logic for the shooter role each frame.
+    private bool canSeePlayer;
+    public float shotInterval = 0.5f;
+
+    private int maxCandidateChecks = 10;
+
+    private Vector3 currMoveTarget;
+    [SerializeField] private float minRepositionRadius = 1f;
+    [SerializeField] private float maxRepositionRadius = 2f;
+    [SerializeField] private float repositionArrivalDistance = 0.5f;
+    [SerializeField] private float repositionTimeInterval = 2f;
+    private bool isRepositioning;
+
+    void Start()
+    {
+        canSeePlayer = false;
+    }
+
     public override void Tick()
     {
         if (controller == null)
@@ -15,37 +33,179 @@ public class ShooterRoleBrain : EnemyRoleBrain
             return;
         }
 
-        if (controller.HasLineOfSight && controller.PlayerTarget != null)
+        if (controller.PlayerTarget == null)
         {
-            float playerDistance = Vector3.Distance(controller.transform.position, controller.PlayerTarget.position);
+            canSeePlayer = false;
+            isRepositioning = false;
+            controller.ChangeActionState(EnemyActionState.Idle);
+            controller.StopMoving();
+            return;
+        }
 
-            if (playerDistance < minimumRange)
+        if (isRepositioning)
+        {
+            controller.ChangeActionState(EnemyActionState.Reposition);
+
+            if (HasReachedRepositionTarget())
             {
-                controller.ChangeActionState(EnemyActionState.Reposition);
+                isRepositioning = false;
                 controller.StopMoving();
-            }
-            else if (playerDistance > preferredRange)
-            {
-                controller.ChangeActionState(EnemyActionState.MoveToPlayer);
-                controller.MoveTo(controller.PlayerTarget.position);
+                return;
             }
             else
             {
-                controller.ChangeActionState(EnemyActionState.Attack);
-                controller.StopMoving();
+                controller.MoveTo(currMoveTarget);
+                return;
+            }
+        }
+
+        if (HasLineOfSightToPlayer() && Vector3.Distance(this.transform.position, controller.PlayerTarget.position) < maxDist)
+        {
+            if (canSeePlayer == false)
+            {
+                canSeePlayer = true;
+                StartCoroutine(AttackingCoroutine());
+                StartCoroutine(RepositionCoroutine());
+            }
+            controller.ChangeActionState(EnemyActionState.Attack);
+            controller.StopMoving();
+            FacePlayer();
+            return;
+        } else
+        {
+            canSeePlayer = false;
+        }
+        controller.ChangeActionState(EnemyActionState.MoveToPlayer);
+        controller.MoveTo(controller.PlayerTarget.position);
+    }
+
+    private bool HasLineOfSightToPlayer()
+    {
+        Vector3 origin = eyePoint != null ? eyePoint.position : transform.position + Vector3.up;
+        Vector3 toPlayer = controller.PlayerTarget.position - origin;
+
+        if (!Physics.Raycast(origin, toPlayer.normalized, out RaycastHit hit, toPlayer.magnitude, lineOfSightMask))
+        {
+            return true;
+        } else
+        {
+            return false;
+        }
+    }
+
+    private void Fire()
+    {
+        Vector3 origin = eyePoint != null ? eyePoint.position : transform.position + Vector3.up;
+        Debug.DrawLine(origin, controller.PlayerTarget.position, Color.yellow, 0.1f);
+    }
+
+    private void FacePlayer()
+    {
+        Vector3 toPlayer = controller.PlayerTarget.position - transform.position;
+        toPlayer.y = 0f;
+
+        if (toPlayer.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
+
+        transform.rotation = Quaternion.LookRotation(toPlayer);
+    }
+
+    public IEnumerator AttackingCoroutine()
+    {
+        while (canSeePlayer)
+        {
+            yield return new WaitForSeconds(shotInterval);
+            Fire();
+        }
+    }
+
+    public IEnumerator RepositionCoroutine()
+    {
+        yield return new WaitForSeconds(repositionTimeInterval);
+        while (canSeePlayer)
+        {
+            yield return new WaitForSeconds(repositionTimeInterval);
+
+            if (PickReposition(out Vector3 repositionTarget))
+            {
+                currMoveTarget = repositionTarget;
+                isRepositioning = true;
+                canSeePlayer = false;
+                controller.ChangeActionState(EnemyActionState.Reposition);
+            }
+        }
+    }
+
+    private bool HasReachedRepositionTarget()
+    {
+        Vector3 currentPosition = transform.position;
+        Vector3 targetPosition = currMoveTarget;
+
+        currentPosition.y = 0f;
+        targetPosition.y = 0f;
+
+        return Vector3.Distance(currentPosition, targetPosition) <= repositionArrivalDistance;
+    }
+
+    public bool PickReposition(out Vector3 chosenPos)
+    {
+        bool isValidReposition = false;
+        chosenPos = this.transform.position;
+
+        for (int i = 0; i < maxCandidateChecks; i++)
+        {
+            float candidateAngle = Random.Range(0,360f);
+            float candidateRadius = Random.Range(minRepositionRadius, maxRepositionRadius);
+            //Spherecast for validity. IF true set isValidReposition to true
+            Vector3 candidateDirection = Quaternion.Euler(0f, candidateAngle, 0f) * Vector3.forward;
+            Vector3 candidatePosition = transform.position + candidateDirection * candidateRadius;
+
+            //validity check
+            //navmesh check
+            Vector3 navHitPosition;
+            if (controller.TryGetNearestNavMeshPosition(candidatePosition, 1f, out navHitPosition) == false)
+            {
+                Debug.Log("Failing nav hit check");
+                continue;
             }
 
-            return;
-        }
+            //min max dist respect
+            if (Vector3.Distance(transform.position, navHitPosition) <= repositionArrivalDistance)
+            {
+                Debug.Log("Failing too-close reposition check");
+                continue;
+            }
 
-        if (controller.HasLastKnownPlayerPosition)
+            float distanceToPlayer = Vector3.Distance(navHitPosition, controller.PlayerTarget.position);
+
+            if (distanceToPlayer < minDist || distanceToPlayer > maxDist)
+            {
+                Debug.Log("Failing max_dist respect");
+                continue;
+            }
+
+            //Pathing check
+            NavMeshPath path = new NavMeshPath();
+
+            if (!controller.NavMeshAgent.CalculatePath(navHitPosition, path) ||
+                path.status != NavMeshPathStatus.PathComplete)
+            {
+                Debug.Log("Failing pathing check");
+                continue;
+            }
+
+            chosenPos = navHitPosition;
+            isValidReposition = true;
+            break;
+
+        }
+        if (isValidReposition)
         {
-            controller.ChangeActionState(EnemyActionState.MoveToSearchArea);
-            controller.MoveTo(controller.LastKnownPlayerPosition);
-            return;
+            return true;
         }
 
-        controller.ChangeActionState(EnemyActionState.ReturnToAnchor);
-        controller.MoveTo(controller.AnchorPosition);
+        return false;
     }
 }
