@@ -48,6 +48,12 @@ namespace JerryScripts.Feature.WeaponGeneration
             "in the correct orientation.")]
         [SerializeField] private Vector3 _localRotationOffset = Vector3.zero;
 
+        [Tooltip(
+            "Local scale applied to the barrel-guard after parenting. Useful for " +
+            "fine-tuning size when meshes from different FBXs don't quite match the " +
+            "lower receiver. Default (1, 1, 1) preserves the prefab's authored scale.")]
+        [SerializeField] private Vector3 _localScale = Vector3.one;
+
         // ===================================================================
         // Public read-only API
         // ===================================================================
@@ -70,5 +76,12 @@ namespace JerryScripts.Feature.WeaponGeneration
         /// <c>BarrelGuardMountPoint</c>.
         /// </summary>
         public Vector3 LocalRotationOffset => _localRotationOffset;
+
+        /// <summary>
+        /// Local scale applied after parenting to <c>BarrelGuardMountPoint</c>.
+        /// Default <see cref="Vector3.one"/> — set in the inspector to fine-tune
+        /// per-mesh sizing when the FBX scales don't match.
+        /// </summary>
+        public Vector3 LocalScale => _localScale;
     }
 }

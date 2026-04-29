@@ -75,14 +75,17 @@ namespace JerryScripts.Feature.WeaponGeneration
         }
 
         /// <summary>
-        /// Overload without a weapon prefab out-param — useful in unit tests or
-        /// when only the <see cref="WeaponData"/> is needed.
+        /// Stats-only overload. Returns a runtime <see cref="WeaponData"/> with all
+        /// six stats rolled inside <paramref name="rarity"/>'s bands. Does NOT
+        /// instantiate any GameObject — use <see cref="AttachBarrelGuardTo"/>
+        /// to attach a rolled barrel-guard to an already-instantiated weapon
+        /// (e.g. after <see cref="WeaponSpawner"/> instantiates its prefab).
         /// </summary>
         public static WeaponData GenerateRandom(
             WeaponRarity rarity,
             WeaponGenerationConfig config)
         {
-            return GenerateRandom(rarity, config, out _);
+            return RollStats(rarity, config);
         }
 
         /// <summary>
@@ -99,11 +102,13 @@ namespace JerryScripts.Feature.WeaponGeneration
         }
 
         /// <summary>
-        /// Overload without a weapon prefab out-param.
+        /// Stats-only overload. Rolls a rarity using shop-table probabilities,
+        /// then returns a runtime <see cref="WeaponData"/> with stats rolled inside
+        /// that rarity's bands. Does NOT instantiate any GameObject.
         /// </summary>
         public static WeaponData GenerateRollRarity(WeaponGenerationConfig config)
         {
-            return GenerateRollRarity(config, out _);
+            return RollStats(RollRarity(), config);
         }
 
         /// <summary>
@@ -118,11 +123,14 @@ namespace JerryScripts.Feature.WeaponGeneration
         }
 
         /// <summary>
-        /// Overload without a weapon prefab out-param.
+        /// Stats-only overload. Returns a Basic-rarity runtime <see cref="WeaponData"/>
+        /// for the initial scene spawn. Does NOT instantiate any GameObject.
+        /// Pair with <see cref="AttachBarrelGuardTo"/> after instantiating the
+        /// player's weapon prefab.
         /// </summary>
         public static WeaponData GenerateInitial(WeaponGenerationConfig config)
         {
-            return GenerateInitial(config, out _);
+            return RollStats(WeaponRarity.Basic, config);
         }
 
         // ===================================================================
@@ -218,6 +226,37 @@ namespace JerryScripts.Feature.WeaponGeneration
             return weaponRoot;
         }
 
+        /// <summary>
+        /// Public entry point used by <see cref="WeaponSpawner"/> after it has
+        /// instantiated a fully-equipped pistol prefab (interactable + lower-receiver
+        /// mesh + <c>BarrelGuardMountPoint</c> child). Finds the mount point on the
+        /// supplied <paramref name="weaponRoot"/> and parents a rolled barrel-guard
+        /// to it (Rules 11–12). Falls back to the empty-pool magenta-cube path if
+        /// the pool is empty.
+        /// </summary>
+        /// <param name="weaponRoot">
+        ///   The instantiated weapon GameObject. Must contain a child Transform
+        ///   named <c>BarrelGuardMountPoint</c>; otherwise the barrel-guard parents
+        ///   to the root with a warning.
+        /// </param>
+        /// <param name="config">Designer config asset. Must not be null.</param>
+        public static void AttachBarrelGuardTo(GameObject weaponRoot, WeaponGenerationConfig config)
+        {
+            if (weaponRoot == null)
+            {
+                Debug.LogError("[WeaponGenerator] AttachBarrelGuardTo: weaponRoot is null.");
+                return;
+            }
+            if (config == null)
+            {
+                Debug.LogError("[WeaponGenerator] AttachBarrelGuardTo: config is null.", weaponRoot);
+                return;
+            }
+
+            Transform mountPoint = FindBarrelGuardMount(weaponRoot);
+            AttachBarrelGuard(config, mountPoint, weaponRoot);
+        }
+
         private static Transform FindBarrelGuardMount(GameObject lower)
         {
             Transform mount = lower.transform.Find(BarrelGuardMountPointName);
@@ -275,6 +314,13 @@ namespace JerryScripts.Feature.WeaponGeneration
             GameObject barrelGuard = Object.Instantiate(selected.BarrelGuardPrefab, mountPoint, false);
             barrelGuard.transform.localPosition = selected.LocalPositionOffset;
             barrelGuard.transform.localRotation = Quaternion.Euler(selected.LocalRotationOffset);
+
+            // Defensive: a zero scale would make the mesh invisible. Most likely
+            // cause is an asset authored before _localScale was added (Unity deserializes
+            // missing fields to default(T) = Vector3.zero rather than the C# initializer).
+            // Treat zero as "no scale override" and use Vector3.one.
+            Vector3 scale = selected.LocalScale;
+            barrelGuard.transform.localScale = (scale == Vector3.zero) ? Vector3.one : scale;
         }
 
         // ===================================================================

@@ -21,4 +21,8 @@ MonoBehaviour:
   _textColor: {r: 1, g: 0.9764151, b: 0.9764151, a: 1}
   _healthBarFillColor: {r: 0.9811321, g: 0.9811321, b: 0.96262014, a: 1}
   _healthBarBgColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
+  _weaponPanelHeight: 0.06
+  _pistolSilhouette: {fileID: 2800000, guid: 45dde44a00231d84a9581b9b80279b24, type: 3}
+  _weaponPanelLocalOffset: {x: 0, y: -0.105, z: -0.175}
+  _weaponPanelLocalRotation: {x: 30, y: 0, z: 0}
   _font: {fileID: 0}

@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1449badd09166347ba73fc03a3398f2, type: 3}
+  m_Name: BarrelGuardData_K
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Feature.WeaponGeneration.BarrelGuardData
+  _barrelGuardPrefab: {fileID: 4544283590232503811, guid: e56957fd2a21aa849a860ade424067e0, type: 3}
+  _localPositionOffset: {x: -1.24168, y: 0.0335, z: -0.426}
+  _localRotationOffset: {x: 0, y: 0, z: 0}
+  _localScale: {x: 1, y: 1, z: 1}

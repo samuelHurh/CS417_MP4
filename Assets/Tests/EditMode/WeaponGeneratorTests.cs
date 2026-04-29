@@ -506,10 +506,12 @@ namespace JerryScripts.Tests.EditMode
                 new System.Text.RegularExpressions.Regex(
                     @"\[WeaponGenerator\] BarrelGuardPool is empty"));
 
-            // Act — must not throw
+            // Act — must not throw. Use the out-param overload to trigger the
+            // prefab-assembly path that eventually calls AttachBarrelGuard with
+            // the empty pool (no-out overload is stats-only and would skip it).
             WeaponData data = null;
             Assert.DoesNotThrow(
-                () => data = WeaponGenerator.GenerateRandom(WeaponRarity.Basic, config),
+                () => data = WeaponGenerator.GenerateRandom(WeaponRarity.Basic, config, out _),
                 "GenerateRandom must not throw when the BarrelGuardPool is empty.");
 
             // Assert — WeaponData is still valid despite the empty pool

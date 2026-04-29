@@ -56,10 +56,22 @@ namespace JerryScripts.Presentation.HUD
         [SerializeField] private float _weaponPanelHeight = 0.06f;
 
         [Tooltip(
-            "Generic pistol silhouette sprite shown on the weapon panel (left side, ~30×20mm). " +
-            "Assign in editor. Null is acceptable at runtime — panel still functions, " +
-            "but no icon will render and a warning is logged (ui-hud-system.md Rule 19).")]
-        [SerializeField] private Sprite _pistolSilhouette;
+            "Generic pistol silhouette texture shown on the weapon panel (left side, ~30×20mm). " +
+            "Assign any Texture2D — a default-imported PNG works without changing import settings. " +
+            "Null is acceptable at runtime — panel still functions, but no icon will render and " +
+            "a warning is logged (ui-hud-system.md Rule 19).")]
+        [SerializeField] private Texture2D _pistolSilhouette;
+
+        [Tooltip(
+            "Local position offset of the weapon panel (Block B) relative to the left controller. " +
+            "Default: (0, 0.02, -0.05) places it just below Block A. Tweak Y to raise/lower, " +
+            "Z to push toward/away from palm. Live-editable in Play mode for quick tuning.")]
+        [SerializeField] private Vector3 _weaponPanelLocalOffset = new Vector3(0f, 0.02f, -0.05f);
+
+        [Tooltip(
+            "Local rotation (Euler) of the weapon panel (Block B) relative to the left controller. " +
+            "Default: (-30, 0, 0) tilts the panel toward the player's face like Block A.")]
+        [SerializeField] private Vector3 _weaponPanelLocalRotation = new Vector3(-30f, 0f, 0f);
 
         [Header("Font")]
         [Tooltip("Font asset for all HUD text. Drag any .ttf or .otf font asset here. " +
@@ -104,11 +116,23 @@ namespace JerryScripts.Presentation.HUD
         public float WeaponPanelHeight => _weaponPanelHeight;
 
         /// <summary>
-        /// Generic pistol silhouette sprite for HUD-06 left column.
-        /// May be null — HUDSystem logs a warning and renders the panel without the icon.
-        /// Jerry assigns the sprite asset in editor work.
+        /// Local position offset of the HUD-06 weapon panel from the left controller.
+        /// Tweak in Inspector to position Block B independently of Block A.
         /// </summary>
-        public Sprite PistolSilhouette => _pistolSilhouette;
+        public Vector3 WeaponPanelLocalOffset => _weaponPanelLocalOffset;
+
+        /// <summary>
+        /// Local rotation (Euler) of the HUD-06 weapon panel.
+        /// </summary>
+        public Vector3 WeaponPanelLocalRotation => _weaponPanelLocalRotation;
+
+        /// <summary>
+        /// Generic pistol silhouette texture for HUD-06 left column.
+        /// May be null — HUDSystem logs a warning and renders the panel without the icon.
+        /// Accepts any Texture2D — a default-imported PNG works without changing import settings.
+        /// Jerry assigns the texture asset in editor work.
+        /// </summary>
+        public Texture2D PistolSilhouette => _pistolSilhouette;
 
         /// <summary>Font asset for HUD text. May be null (system falls back to built-in).</summary>
         public Font Font => _font;

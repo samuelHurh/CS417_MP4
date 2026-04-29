@@ -1,0 +1,73 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 060011c5eacd69142ac58980cf230778, type: 3}
+  m_Name: WeaponGenerationConfig
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Feature.WeaponGeneration.WeaponGenerationConfig
+  _basicBand:
+    BaseDamageMin: 18
+    BaseDamageMax: 22
+    RoundsPerMinuteMin: 150
+    RoundsPerMinuteMax: 200
+    MagCapacityMin: 10
+    MagCapacityMax: 12
+    RecoilPitchBaseMin: 5
+    RecoilPitchBaseMax: 6.5
+    RecoilYawSpreadMin: 1.5
+    RecoilYawSpreadMax: 2.5
+    BulletSpeedMin: 80
+    BulletSpeedMax: 100
+  _rareBand:
+    BaseDamageMin: 26
+    BaseDamageMax: 32
+    RoundsPerMinuteMin: 180
+    RoundsPerMinuteMax: 240
+    MagCapacityMin: 12
+    MagCapacityMax: 15
+    RecoilPitchBaseMin: 4
+    RecoilPitchBaseMax: 5.5
+    RecoilYawSpreadMin: 1.2
+    RecoilYawSpreadMax: 2
+    BulletSpeedMin: 100
+    BulletSpeedMax: 130
+  _epicBand:
+    BaseDamageMin: 36
+    BaseDamageMax: 44
+    RoundsPerMinuteMin: 200
+    RoundsPerMinuteMax: 280
+    MagCapacityMin: 14
+    MagCapacityMax: 17
+    RecoilPitchBaseMin: 3
+    RecoilPitchBaseMax: 4.5
+    RecoilYawSpreadMin: 0.8
+    RecoilYawSpreadMax: 1.5
+    BulletSpeedMin: 130
+    BulletSpeedMax: 170
+  _legendaryBand:
+    BaseDamageMin: 48
+    BaseDamageMax: 58
+    RoundsPerMinuteMin: 240
+    RoundsPerMinuteMax: 330
+    MagCapacityMin: 16
+    MagCapacityMax: 20
+    RecoilPitchBaseMin: 2.5
+    RecoilPitchBaseMax: 4
+    RecoilYawSpreadMin: 0.5
+    RecoilYawSpreadMax: 1.2
+    BulletSpeedMin: 170
+    BulletSpeedMax: 230
+  _barrelGuardPool:
+  - {fileID: 11400000, guid: e7ff96cfca354684888aac8cdec2cb1b, type: 2}
+  - {fileID: 11400000, guid: 59c7eaeb14113fa459bfd4e262696c2d, type: 2}
+  - {fileID: 11400000, guid: 4545b822a72410b41b8114ea4dcb7c8e, type: 2}
+  - {fileID: 11400000, guid: 6e18defe06d948a43882daa3c88d8883, type: 2}
+  - {fileID: 11400000, guid: 9dcee39b10ce45243b0dda8129351a29, type: 2}
+  _lowerReceiverPrefab: {fileID: 0}

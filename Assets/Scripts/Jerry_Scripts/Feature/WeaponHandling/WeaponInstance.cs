@@ -215,7 +215,14 @@ namespace JerryScripts.Feature.WeaponHandling
 
             OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
 
-            // Begin holstered at scene start
+            // Begin holstered at scene start. Apply the Holstered Rigidbody/grab
+            // settings explicitly first because CurrentState is already Holstered
+            // (default field initializer) and EnterState(Holstered) would early-return
+            // without running the case body. Without this, the prefab's Inspector
+            // Rigidbody settings remain live — a non-kinematic Rigidbody would let
+            // gravity pull the weapon through the floor at PIE start.
+            _rigidbody.isKinematic = true;
+            _grabInteractable.enabled = true;
             EnterState(WeaponInstanceState.Holstered);
         }
 
@@ -810,12 +817,12 @@ namespace JerryScripts.Feature.WeaponHandling
 
             _data = generatedData;
 
-            // If Awake has already run, sync ammo from the new data immediately
-            if (CurrentAmmo == 0 && _data.MagCapacity > 0)
-            {
-                CurrentAmmo = _data.MagCapacity;
-                OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
-            }
+            // Always resync CurrentAmmo to the new MagCapacity. A freshly-generated
+            // weapon spawns with a full mag per GDD §Ammo State. If Awake already
+            // ran with the prefab's baked data, CurrentAmmo holds the OLD MagCapacity
+            // and would otherwise stay stale (e.g., baked 12 vs rolled 18).
+            CurrentAmmo = _data.MagCapacity;
+            OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
         }
 
         // ===================================================================
