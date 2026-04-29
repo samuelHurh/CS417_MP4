@@ -21,6 +21,11 @@ public class ShooterRoleBrain : EnemyRoleBrain
     [SerializeField] private float repositionTimeInterval = 2f;
     private bool isRepositioning;
 
+    [SerializeField] private GameObject bulletPrefab;
+    [SerializeField] private Transform bulletSpawn;
+
+    [SerializeField] private float bulletVelocity;
+
     void Start()
     {
         canSeePlayer = false;
@@ -87,16 +92,27 @@ public class ShooterRoleBrain : EnemyRoleBrain
         if (!Physics.Raycast(origin, toPlayer.normalized, out RaycastHit hit, toPlayer.magnitude, lineOfSightMask))
         {
             return true;
-        } else
-        {
-            return false;
         }
+
+        return IsHitOnPlayer(hit.transform);
+    }
+
+    private bool IsHitOnPlayer(Transform hitTransform)
+    {
+        Transform playerTarget = controller.PlayerTarget;
+        return hitTransform == playerTarget ||
+               hitTransform.IsChildOf(playerTarget) ||
+               playerTarget.IsChildOf(hitTransform) ||
+               hitTransform.root == playerTarget.root;
     }
 
     private void Fire()
     {
         Vector3 origin = eyePoint != null ? eyePoint.position : transform.position + Vector3.up;
-        Debug.DrawLine(origin, controller.PlayerTarget.position, Color.yellow, 0.1f);
+        //Debug.DrawLine(origin, controller.PlayerTarget.position, Color.yellow, 0.1f);
+        GameObject newBullet = Instantiate(bulletPrefab, bulletSpawn.position, bulletSpawn.rotation);
+        newBullet.GetComponent<Rigidbody>().AddForce(newBullet.transform.forward * bulletVelocity, ForceMode. Impulse);
+        Destroy(newBullet, 5f);
     }
 
     private void FacePlayer()

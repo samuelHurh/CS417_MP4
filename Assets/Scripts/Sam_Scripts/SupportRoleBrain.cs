@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class SupportRoleBrain : EnemyRoleBrain
 {
@@ -7,12 +8,21 @@ public class SupportRoleBrain : EnemyRoleBrain
     [SerializeField] private Transform eyePoint;
     [SerializeField] private LayerMask lineOfSightMask = Physics.DefaultRaycastLayers;
     [SerializeField] private float maxThrowRange = 10f;
+    [SerializeField] private float targetGroundingSampleRadius = 3f;
     [SerializeField] private GameObject projectileLobTargetPrefab;
+    [SerializeField] private GameObject damageAOEPrefab;
+    [SerializeField] private GameObject healAOEPrefab;
 
     [Header("Timing")]
     [SerializeField] private float throwWindup = 0.5f;
     [SerializeField] private float minTimeBetweenThrows = 4f;
     [SerializeField] private float repollDelay = 0.1f;
+
+    [Header("Projectile Visual")]
+    [SerializeField] private float lobTravelTime = 0.8f;
+    [SerializeField] private float arcHeightPerMeter = 0.25f;
+    [SerializeField] private float minArcHeight = 1f;
+    [SerializeField] private float maxArcHeight = 5f;
 
     private Coroutine supportActionRoutine;
 
@@ -70,8 +80,6 @@ public class SupportRoleBrain : EnemyRoleBrain
         {
             case SupportDecision.Heal:
                 return ResolveEnemyTarget(controller.SquadBlackboard.GetLowestHealthLivingEnemy(controller));
-            case SupportDecision.DD:
-                return ResolveEnemyTarget(controller.SquadBlackboard.GetRandomLivingEnemy(controller));
             default:
                 return controller.PlayerTarget;
         }
@@ -144,12 +152,28 @@ public class SupportRoleBrain : EnemyRoleBrain
         Vector3 origin = eyePoint != null ? eyePoint.position : transform.position + Vector3.up;
         Vector3 toTarget = target.position - origin;
 
-        if (!Physics.Raycast(origin, toTarget.normalized, out RaycastHit hit, toTarget.magnitude, lineOfSightMask))
+        RaycastHit[] hits = Physics.RaycastAll(origin, toTarget.normalized, toTarget.magnitude, lineOfSightMask);
+        System.Array.Sort(hits, (leftHit, rightHit) => leftHit.distance.CompareTo(rightHit.distance));
+
+        foreach (RaycastHit hit in hits)
         {
-            return true;
+            if (hit.transform == transform || hit.transform.IsChildOf(transform))
+            {
+                continue;
+            }
+
+            return IsHitOnTarget(hit.transform, target);
         }
 
-        return hit.transform == target || hit.transform.IsChildOf(target);
+        return true;
+    }
+
+    private static bool IsHitOnTarget(Transform hitTransform, Transform target)
+    {
+        return hitTransform == target ||
+               hitTransform.IsChildOf(target) ||
+               target.IsChildOf(hitTransform) ||
+               hitTransform.root == target.root;
     }
 
     private void FaceTarget(Transform target)
@@ -167,11 +191,73 @@ public class SupportRoleBrain : EnemyRoleBrain
 
     private void ThrowDecisionProjectile(SupportDecision decision, Vector3 targetPosition)
     {
-        if ((decision == SupportDecision.Attack || decision == SupportDecision.DD) && projectileLobTargetPrefab != null)
+        Vector3 groundedTargetPosition = GetGroundedTargetPosition(targetPosition);
+
+        GameObject aoePrefab = GetAOEPrefab(decision);
+
+        if (aoePrefab != null)
         {
-            Instantiate(projectileLobTargetPrefab, targetPosition, Quaternion.identity);
+            Instantiate(aoePrefab, groundedTargetPosition, Quaternion.identity);
         }
 
-        Debug.Log($"Support throws {decision} projectile at {targetPosition}");
+        if (projectileLobTargetPrefab != null)
+        {
+            SpawnLobProjectileVisual(groundedTargetPosition);
+        }
+
+        Debug.Log($"Support throws {decision} projectile at {groundedTargetPosition}");
+    }
+
+    private GameObject GetAOEPrefab(SupportDecision decision)
+    {
+        switch (decision)
+        {
+            case SupportDecision.Heal:
+                return healAOEPrefab;
+            default:
+                return damageAOEPrefab;
+        }
+    }
+
+    private void SpawnLobProjectileVisual(Vector3 targetPosition)
+    {
+        Vector3 startPosition = eyePoint != null ? eyePoint.position : transform.position + Vector3.up;
+        GameObject projectileVisual = Instantiate(projectileLobTargetPrefab, startPosition, Quaternion.identity);
+        StartCoroutine(LobProjectileVisual(projectileVisual.transform, startPosition, targetPosition));
+    }
+
+    private IEnumerator LobProjectileVisual(Transform projectileTransform, Vector3 startPosition, Vector3 targetPosition)
+    {
+        float elapsedTime = 0f;
+        float distance = Vector3.Distance(startPosition, targetPosition);
+        float arcHeight = Mathf.Clamp(distance * arcHeightPerMeter, minArcHeight, maxArcHeight);
+        float travelTime = Mathf.Max(0.01f, lobTravelTime);
+
+        while (elapsedTime < travelTime && projectileTransform != null)
+        {
+            float t = elapsedTime / travelTime;
+            Vector3 nextPosition = Vector3.Lerp(startPosition, targetPosition, t);
+            nextPosition.y += Mathf.Sin(t * Mathf.PI) * arcHeight;
+            projectileTransform.position = nextPosition;
+
+            elapsedTime += Time.deltaTime;
+            yield return null;
+        }
+
+        if (projectileTransform != null)
+        {
+            projectileTransform.position = targetPosition;
+            Destroy(projectileTransform.gameObject);
+        }
+    }
+
+    private Vector3 GetGroundedTargetPosition(Vector3 targetPosition)
+    {
+        if (NavMesh.SamplePosition(targetPosition, out NavMeshHit hit, targetGroundingSampleRadius, NavMesh.AllAreas))
+        {
+            return hit.position;
+        }
+
+        return targetPosition;
     }
 }

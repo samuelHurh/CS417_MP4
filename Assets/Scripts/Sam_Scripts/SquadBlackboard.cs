@@ -4,8 +4,7 @@ using UnityEngine;
 public enum SupportDecision
 {
     Attack,
-    Heal,
-    DD
+    Heal
 }
 
 public class SquadBlackboard : MonoBehaviour
@@ -51,15 +50,15 @@ public class SquadBlackboard : MonoBehaviour
         SupportDecision.Attack,
         SupportDecision.Attack,
         SupportDecision.Attack,
-        SupportDecision.DD,
-        SupportDecision.DD,
-        SupportDecision.DD,
-        SupportDecision.DD,
+        SupportDecision.Heal,
+        SupportDecision.Heal,
+        SupportDecision.Heal,
+        SupportDecision.Heal,
     };
 
-    [SerializeField] private int healSlotsAtOrBelow75Percent = 2;
-    [SerializeField] private int healSlotsAtOrBelow50Percent = 4;
-    [SerializeField] private int healSlotsAtOrBelow25Percent = 6;
+    [SerializeField] private int healSlotsAtOrBelow75Percent = 4;
+    [SerializeField] private int healSlotsAtOrBelow50Percent = 6;
+    [SerializeField] private int healSlotsAtOrBelow25Percent = 8;
 
     private SupportDecision[] workingTable;
 
