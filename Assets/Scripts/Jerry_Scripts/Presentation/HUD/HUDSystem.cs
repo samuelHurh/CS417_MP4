@@ -20,13 +20,21 @@ namespace JerryScripts.Presentation.HUD
     /// <para><b>Dead (HUD-04):</b> Large floating panel at gaze-center (0.8m forward
     /// from head) with button prompts. Trigger=Restart, PrimaryButton=Quit.</para>
     ///
+    /// <para><b>Weapon panel (HUD-06 / Block B, S2-009):</b> A second canvas
+    /// parented directly below Block A on the same left-controller anchor.
+    /// Shows rarity name (rarity color), pistol silhouette icon, and 5 stat bars
+    /// (DMG / RPM / MAG / REC / VEL). Visible only when a weapon is held in
+    /// Running state. Refreshed atomically on <see cref="WeaponInstance.OnEquipChanged"/>.
+    /// Bar fills use the normalization formulas in weapon-generation.md §Stat-Bar Normalization.
+    /// No per-frame recomputation — WeaponData is immutable after generation.</para>
+    ///
     /// <para><b>Interaction model:</b> No XR ray/poke UI interaction needed.
     /// Menu actions are bound to physical controller buttons via InputActionReferences,
     /// the same pattern used by WeaponInstance. The on-screen labels tell the player
     /// which button does what.</para>
     /// </summary>
     /// <remarks>
-    /// S2-003 + S2-004. GDD: ui-hud-system.md.
+    /// S2-003 + S2-004 + S2-009. GDD: ui-hud-system.md, weapon-generation.md §UI Requirements.
     /// Architecture: Presentation layer — consumes Foundation + Core + Feature.
     /// </remarks>
     [DisallowMultipleComponent]
@@ -91,6 +99,20 @@ namespace JerryScripts.Presentation.HUD
         private GameObject _pausePanel;
 
         // ===================================================================
+        // UI — weapon panel (HUD-06, Block B)
+        // ===================================================================
+
+        /// <summary>Root canvas GameObject for Block B. Hidden by default.</summary>
+        private GameObject _weaponBlockB;
+        private Text _rarityNameText;
+        private Image _pistolSilhouetteImage;
+        private Image _barFillDmg;
+        private Image _barFillRpm;
+        private Image _barFillMag;
+        private Image _barFillRec;
+        private Image _barFillVel;
+
+        // ===================================================================
         // UI — floating panels (separate canvases at gaze-center)
         // ===================================================================
 
@@ -137,6 +159,7 @@ namespace JerryScripts.Presentation.HUD
 
             ResolveSharedValues();
             BuildHandDisplay();
+            BuildWeaponPanel();
             BuildPauseScreen();
             BuildDeathScreen();
         }
@@ -305,10 +328,20 @@ namespace JerryScripts.Presentation.HUD
 
         private void OnEquipChanged(bool isEquipped)
         {
-            if (_ammoText == null) return;
-            _ammoText.gameObject.SetActive(isEquipped);
+            // Block A ammo text
+            if (_ammoText != null)
+            {
+                _ammoText.gameObject.SetActive(isEquipped);
+                if (isEquipped && _weaponInstance != null)
+                    OnAmmoChanged(_weaponInstance.CurrentAmmo, _weaponInstance.MagCapacity);
+            }
+
+            // Block B — weapon stat panel (HUD-06)
+            if (_weaponBlockB != null)
+                _weaponBlockB.SetActive(isEquipped);
+
             if (isEquipped && _weaponInstance != null)
-                OnAmmoChanged(_weaponInstance.CurrentAmmo, _weaponInstance.MagCapacity);
+                RefreshWeaponPanel(_weaponInstance.Data);
         }
 
         private void OnStateChanged(PlayerState newState)
@@ -465,6 +498,242 @@ namespace JerryScripts.Presentation.HUD
 
             AddText(parent, "QuitPrompt", "B / Y  QUIT", promptSize, new Color(0.9f, 0.4f, 0.4f, 1f),
                 TextAnchor.MiddleCenter, 0.55f, 0.02f, 0.95f, 0.26f, 0f, 0f, 0f, 0f);
+        }
+
+        // ===================================================================
+        // Build — weapon stat panel (HUD-06, Block B, S2-009)
+        // ===================================================================
+
+        /// <summary>
+        /// Builds the HUD-06 Block B canvas. Parented to the left controller anchor
+        /// directly below Block A. Hidden by default — shown only when a weapon is held.
+        ///
+        /// <para>Layout (left to right across the canvas):</para>
+        /// <list type="number">
+        ///   <item>Rarity name text (rarity color, left column, ~20% width)</item>
+        ///   <item>Pistol silhouette icon (image, left column, ~20% width)</item>
+        ///   <item>Five horizontal stat bars DMG / RPM / MAG / REC / VEL (~60% width)</item>
+        /// </list>
+        ///
+        /// <para>Bar fills use the normalization formulas in
+        /// weapon-generation.md §Stat-Bar Normalization.
+        /// No per-frame recomputation — <see cref="RefreshWeaponPanel"/> is called
+        /// once on equip; <see cref="WeaponData"/> is immutable after generation.</para>
+        /// </summary>
+        private void BuildWeaponPanel()
+        {
+            if (_rigControllerProvider == null) return;
+            Transform leftController = _rigControllerProvider.LeftControllerTransform;
+            if (leftController == null) return;
+
+            float panelWidth    = _config != null ? _config.PanelWidth         : 0.12f;
+            float blockAHeight  = _config != null ? _config.PanelHeight        : 0.04f;
+            float blockBHeight  = _config != null ? _config.WeaponPanelHeight  : 0.06f;
+
+            Vector3 blockAOffset = _config != null ? _config.LocalOffset   : new Vector3(0f, 0.08f, -0.05f);
+            Vector3 blockARot    = _config != null ? _config.LocalRotation : new Vector3(-30f, 0f, 0f);
+
+            // Position Block B directly below Block A along local Y
+            // (offset by the Block A height, accounting for the parent tilt)
+            Vector3 blockBOffset = blockAOffset - new Vector3(0f, blockAHeight + 0.004f, 0f);
+
+            _weaponBlockB = new GameObject("WeaponPanel_HUD");
+            _weaponBlockB.transform.SetParent(leftController, false);
+            _weaponBlockB.transform.localPosition = blockBOffset;
+            _weaponBlockB.transform.localRotation = Quaternion.Euler(blockARot);
+
+            Canvas canvas = _weaponBlockB.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+
+            float canvasW = 800f, canvasH = 360f;
+            RectTransform canvasRect = canvas.GetComponent<RectTransform>();
+            canvasRect.sizeDelta = new Vector2(canvasW, canvasH);
+            canvasRect.localScale = new Vector3(panelWidth / canvasW, blockBHeight / canvasH, 1f);
+
+            AddBgPanel(_weaponBlockB);
+
+            // --- Left column: rarity name + silhouette icon ---
+
+            _rarityNameText = AddText(
+                _weaponBlockB, "RarityName", "Basic",
+                _fontSize - 4, Color.white, TextAnchor.MiddleCenter,
+                0f, 0.55f, 0.25f, 1f,
+                _padding, 0f, -_padding, -_padding);
+
+            // Pistol silhouette image
+            GameObject iconGO = CreateChild(_weaponBlockB, "PistolIcon");
+            Image iconImage = iconGO.AddComponent<Image>();
+            iconImage.raycastTarget = false;
+            Sprite silhouette = _config != null ? _config.PistolSilhouette : null;
+            if (silhouette != null)
+            {
+                iconImage.sprite = silhouette;
+                iconImage.preserveAspect = true;
+            }
+            else
+            {
+                // No sprite assigned — log warning, leave image colorless so panel still renders
+                Debug.LogWarning(
+                    "[HUDSystem] HUDConfig.PistolSilhouette is not assigned. " +
+                    "The HUD-06 icon cell will be empty. Assign a pistol silhouette sprite " +
+                    "in the HUDConfig asset. (ui-hud-system.md Rule 19)",
+                    this);
+                iconImage.color = new Color(0f, 0f, 0f, 0f);
+            }
+            _pistolSilhouetteImage = iconImage;
+            RectTransform iconRect = iconGO.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0f, 0f);
+            iconRect.anchorMax = new Vector2(0.25f, 0.52f);
+            iconRect.offsetMin = new Vector2(_padding, _padding);
+            iconRect.offsetMax = new Vector2(-_padding, -_padding);
+
+            // --- Right column: five stat bars ---
+            BuildStatBars(_weaponBlockB);
+
+            // Hidden by default — shown only when weapon is equipped (ui-hud-system.md Rule 18)
+            _weaponBlockB.SetActive(false);
+        }
+
+        /// <summary>
+        /// Builds the five labeled stat bar rows inside the right two-thirds of Block B.
+        /// Stores fill Images in the five _barFill* fields for later update via
+        /// <see cref="RefreshWeaponPanel"/>.
+        /// </summary>
+        private void BuildStatBars(GameObject parent)
+        {
+            // Bar container: right 75% of the canvas
+            GameObject barsRoot = CreateChild(parent, "StatBars");
+            RectTransform barsRect = barsRoot.GetComponent<RectTransform>();
+            barsRect.anchorMin = new Vector2(0.26f, 0f);
+            barsRect.anchorMax = new Vector2(1f, 1f);
+            barsRect.offsetMin = new Vector2(_padding * 0.5f, _padding);
+            barsRect.offsetMax = new Vector2(-_padding, -_padding);
+
+            // Five bars stacked vertically, equally spaced
+            string[] labels = { "DMG", "RPM", "MAG", "REC", "VEL" };
+            float rowH = 1f / labels.Length;
+            Color barTrackColor  = new Color(0.25f, 0.25f, 0.25f, 1f);
+            Color barFillColor   = new Color(0.3f, 0.75f, 0.95f, 1f);
+            int labelSize        = _fontSize - 14;
+
+            Image[] fills = new Image[labels.Length];
+
+            for (int i = 0; i < labels.Length; i++)
+            {
+                float yMin = 1f - (i + 1) * rowH;
+                float yMax = 1f - i * rowH;
+
+                GameObject row = CreateChild(barsRoot, $"StatRow_{labels[i]}");
+                RectTransform rowRect = row.GetComponent<RectTransform>();
+                rowRect.anchorMin = new Vector2(0f, yMin);
+                rowRect.anchorMax = new Vector2(1f, yMax);
+                rowRect.offsetMin = new Vector2(0f, 2f);
+                rowRect.offsetMax = new Vector2(0f, -2f);
+
+                // Label (left ~20%)
+                AddText(row, $"Label_{labels[i]}", labels[i],
+                    labelSize, _textColor, TextAnchor.MiddleLeft,
+                    0f, 0f, 0.22f, 1f,
+                    0f, 0f, 0f, 0f);
+
+                // Track background (right ~78%)
+                GameObject trackGO = CreateChild(row, $"Track_{labels[i]}");
+                Image track = trackGO.AddComponent<Image>();
+                track.color = barTrackColor;
+                track.raycastTarget = false;
+                RectTransform trackRect = trackGO.GetComponent<RectTransform>();
+                trackRect.anchorMin = new Vector2(0.23f, 0.15f);
+                trackRect.anchorMax = new Vector2(1f, 0.85f);
+                trackRect.offsetMin = trackRect.offsetMax = Vector2.zero;
+
+                // Fill (child of track, anchored to left — width driven by fill value)
+                GameObject fillGO = CreateChild(trackGO, $"Fill_{labels[i]}");
+                Image fill = fillGO.AddComponent<Image>();
+                fill.color = barFillColor;
+                fill.raycastTarget = false;
+                RectTransform fillRect = fillGO.GetComponent<RectTransform>();
+                fillRect.anchorMin = Vector2.zero;
+                fillRect.anchorMax = new Vector2(0f, 1f);  // width = 0, updated per weapon
+                fillRect.offsetMin = Vector2.zero;
+                fillRect.offsetMax = Vector2.zero;
+
+                fills[i] = fill;
+            }
+
+            _barFillDmg = fills[0];
+            _barFillRpm = fills[1];
+            _barFillMag = fills[2];
+            _barFillRec = fills[3];
+            _barFillVel = fills[4];
+        }
+
+        /// <summary>
+        /// Updates Block B text and bar fills from <paramref name="data"/>.
+        /// Called atomically on equip — <see cref="WeaponData"/> is immutable after
+        /// generation so no per-frame refresh is needed.
+        ///
+        /// <para><b>Stat-bar normalization formulas</b>
+        /// (weapon-generation.md §Stat-Bar Normalization):</para>
+        /// <list type="bullet">
+        ///   <item>DMG: baseDamage / 58f  (Legendary max)</item>
+        ///   <item>RPM: roundsPerMinute / 330f  (Legendary max)</item>
+        ///   <item>MAG: magCapacity / 20f  (Legendary max)</item>
+        ///   <item>REC: (maxPitch - recoilPitch) / (maxPitch - minPitch)
+        ///              = (6.5 - pitch) / (6.5 - 2.5)  — inverted: less pitch → fuller bar</item>
+        ///   <item>VEL: bulletSpeed / 230f  (Legendary max)</item>
+        /// </list>
+        /// All results are clamped to [0, 1] before applying.
+        /// </summary>
+        private void RefreshWeaponPanel(WeaponData data)
+        {
+            if (data == null) return;
+
+            // Rarity name + color
+            if (_rarityNameText != null)
+            {
+                _rarityNameText.text = data.Rarity.ToString();
+                _rarityNameText.color = GetRarityColor(data.Rarity);
+            }
+
+            // Bar fills — clamped to [0, 1]
+            SetBarFill(_barFillDmg, Mathf.Clamp01(data.BaseDamage      / 58f));
+            SetBarFill(_barFillRpm, Mathf.Clamp01(data.RoundsPerMinute / 330f));
+            SetBarFill(_barFillMag, Mathf.Clamp01(data.MagCapacity     / 20f));
+
+            // REC is inverse: low pitch (less recoil) = fuller bar
+            // Normalization: (6.5 - pitch) / (6.5 - 2.5) = (6.5 - pitch) / 4.0
+            float recFill = Mathf.Clamp01((6.5f - data.RecoilPitchBase) / 4.0f);
+            SetBarFill(_barFillRec, recFill);
+
+            SetBarFill(_barFillVel, Mathf.Clamp01(data.BulletSpeed / 230f));
+        }
+
+        /// <summary>
+        /// Sets the fill Image's right anchor to <paramref name="fillAmount"/> [0, 1],
+        /// producing a left-aligned horizontal fill bar without Image.fillAmount
+        /// (which requires a Source Image and sliced sprite).
+        /// </summary>
+        private static void SetBarFill(Image fill, float fillAmount)
+        {
+            if (fill == null) return;
+            RectTransform r = fill.GetComponent<RectTransform>();
+            r.anchorMax = new Vector2(Mathf.Clamp01(fillAmount), 1f);
+        }
+
+        /// <summary>
+        /// Returns the HUD rarity label color per ui-hud-system.md §Rarity Colors.
+        /// Basic: white; Rare: sky-blue; Epic: purple; Legendary: gold.
+        /// </summary>
+        internal static Color GetRarityColor(WeaponRarity rarity)
+        {
+            return rarity switch
+            {
+                WeaponRarity.Basic     => new Color(0.91f, 0.91f, 0.82f, 1f),  // warm off-white
+                WeaponRarity.Rare      => new Color(0.29f, 0.56f, 0.89f, 1f),  // sky blue
+                WeaponRarity.Epic      => new Color(0.64f, 0.20f, 0.93f, 1f),  // purple
+                WeaponRarity.Legendary => new Color(1.00f, 0.75f, 0.00f, 1f),  // gold
+                _                      => Color.white
+            };
         }
 
         // ===================================================================
@@ -681,6 +950,76 @@ namespace JerryScripts.Presentation.HUD
         {
             _stateReader = stateReader;
             _rigControllerProvider = rigControllerProvider;
+
+            // Test seam: if Awake() ran before injection (typical in tests where
+            // AddComponent<HUDSystem>() triggers Awake before InjectDependencies),
+            // build the UI now that dependencies are available. Production path
+            // already built during Awake — null guards short-circuit the rebuild.
+            if (_rigControllerProvider != null && _handDisplayRoot == null)
+            {
+                BuildHandDisplay();
+                BuildWeaponPanel();
+            }
+        }
+
+        // ===================================================================
+        // HUD-06 test seams
+        // ===================================================================
+
+        /// <summary>True if the Block B weapon panel root exists and is active.</summary>
+        internal bool TestIsWeaponBlockBActive() =>
+            _weaponBlockB != null && _weaponBlockB.activeSelf;
+
+        /// <summary>Current text of the rarity name label. Null if panel not built.</summary>
+        internal string TestGetRarityNameText() => _rarityNameText?.text;
+
+        /// <summary>Current color of the rarity name label.</summary>
+        internal Color TestGetRarityNameColor() =>
+            _rarityNameText != null ? _rarityNameText.color : Color.clear;
+
+        /// <summary>Current right-anchor X of the DMG fill bar [0, 1].</summary>
+        internal float TestGetBarFillDmg() => GetBarFillValue(_barFillDmg);
+
+        /// <summary>Current right-anchor X of the RPM fill bar [0, 1].</summary>
+        internal float TestGetBarFillRpm() => GetBarFillValue(_barFillRpm);
+
+        /// <summary>Current right-anchor X of the MAG fill bar [0, 1].</summary>
+        internal float TestGetBarFillMag() => GetBarFillValue(_barFillMag);
+
+        /// <summary>Current right-anchor X of the REC fill bar [0, 1].</summary>
+        internal float TestGetBarFillRec() => GetBarFillValue(_barFillRec);
+
+        /// <summary>Current right-anchor X of the VEL fill bar [0, 1].</summary>
+        internal float TestGetBarFillVel() => GetBarFillValue(_barFillVel);
+
+        /// <summary>True if a spread UI bar was created as a named child of Block B.</summary>
+        internal bool TestSpreadBarExists()
+        {
+            if (_weaponBlockB == null) return false;
+            // Spread is intentionally NOT exposed as a bar in HUD-06
+            return _weaponBlockB.GetComponentsInChildren<UnityEngine.UI.Image>(true) is var arr
+                   && System.Array.Exists(arr, img => img != null && img.name.Contains("Spread"));
+        }
+
+        private static float GetBarFillValue(Image fill)
+        {
+            if (fill == null) return -1f;
+            return fill.GetComponent<RectTransform>().anchorMax.x;
+        }
+
+        /// <summary>
+        /// Drives <see cref="RefreshWeaponPanel"/> directly from a test-supplied
+        /// <see cref="WeaponData"/> without needing a live <see cref="WeaponInstance"/>.
+        /// Also forces Block B visibility to match <paramref name="isEquipped"/>.
+        /// </summary>
+        internal void TestSimulateEquipChanged(bool isEquipped, WeaponData data = null)
+        {
+            if (_weaponBlockB != null)
+                _weaponBlockB.SetActive(isEquipped);
+            if (_ammoText != null)
+                _ammoText.gameObject.SetActive(isEquipped);
+            if (isEquipped && data != null)
+                RefreshWeaponPanel(data);
         }
     }
 }

@@ -779,6 +779,46 @@ namespace JerryScripts.Feature.WeaponHandling
         }
 
         // ===================================================================
+        // Generation seam
+        // ===================================================================
+
+        /// <summary>
+        /// Read-only access to the current <see cref="WeaponData"/> instance.
+        /// Used by <see cref="Presentation.HUD.HUDSystem"/> to populate the
+        /// HUD-06 weapon stat panel (Block B) when the weapon is equipped.
+        /// May be null if no data has been assigned yet.
+        /// </summary>
+        public WeaponData Data => _data;
+
+        /// <summary>
+        /// Called by <see cref="WeaponGeneration.WeaponSpawner"/> immediately after
+        /// prefab instantiation to stamp in the procedurally generated
+        /// <see cref="WeaponData"/> before <see cref="Awake"/> reads from it.
+        ///
+        /// <para>Must be called before this GameObject's <c>Awake</c> runs. If
+        /// called after Awake, ammo is re-synced from the new data immediately.</para>
+        /// </summary>
+        internal void InjectGeneratedData(WeaponData generatedData)
+        {
+            if (generatedData == null)
+            {
+                Debug.LogError(
+                    "[WeaponInstance] InjectGeneratedData called with null WeaponData — ignored.",
+                    this);
+                return;
+            }
+
+            _data = generatedData;
+
+            // If Awake has already run, sync ammo from the new data immediately
+            if (CurrentAmmo == 0 && _data.MagCapacity > 0)
+            {
+                CurrentAmmo = _data.MagCapacity;
+                OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
+            }
+        }
+
+        // ===================================================================
         // Validation
         // ===================================================================
 

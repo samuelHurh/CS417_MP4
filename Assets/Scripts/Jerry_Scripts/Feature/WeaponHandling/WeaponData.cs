@@ -51,6 +51,13 @@ namespace JerryScripts.Feature.WeaponHandling
         [Min(0.1f)]
         [SerializeField] private float _maxRange = 50f;
 
+        [Tooltip(
+            "Projectile travel speed in m/s. Currently inert — combat is hitscan at alpha. " +
+            "Used by Sam's post-alpha projectile-mode upgrade. " +
+            "GDD bands (Basic→Legendary): 80–230 m/s.")]
+        [Min(1f)]
+        [SerializeField] private float _bulletSpeed = 100f;
+
         // ===================================================================
         // Magazine / Ammo
         // ===================================================================
@@ -201,6 +208,13 @@ namespace JerryScripts.Feature.WeaponHandling
         /// <summary>Maximum hitscan distance in metres.</summary>
         public float MaxRange => _maxRange;
 
+        /// <summary>
+        /// Projectile travel speed in m/s. Data-only at alpha (hitscan combat).
+        /// Sam's post-alpha projectile mode reads this field directly — no data migration needed.
+        /// GDD bands (Basic→Legendary): 80–230 m/s.
+        /// </summary>
+        public float BulletSpeed => _bulletSpeed;
+
         /// <summary>Maximum rounds per loaded magazine.</summary>
         public int MagCapacity => _magCapacity;
 
@@ -242,6 +256,48 @@ namespace JerryScripts.Feature.WeaponHandling
 
         /// <summary>Muzzle flash particle prefab. May be null to skip VFX.</summary>
         public GameObject MuzzleFlashPrefab => _muzzleFlashPrefab;
+
+        // ===================================================================
+        // Generation seam — internal, for WeaponGenerator use only
+        // ===================================================================
+
+        /// <summary>
+        /// Stamps the six randomised combat stats onto a runtime
+        /// <see cref="ScriptableObject.CreateInstance{T}"/> produced by
+        /// <c>WeaponGenerator</c>. Must be called exactly once per generated
+        /// weapon before the instance is handed to <c>WeaponInstance</c>.
+        ///
+        /// <para><b>Intentionally does NOT touch <c>_maxRange</c></b> — that
+        /// stat is not randomised; it stays at the authored SO default (50 m)
+        /// per <c>weapon-generation.md</c> §Tuning Knobs.</para>
+        /// </summary>
+        /// <param name="weaponName">Display name, e.g. "Rare Pistol".</param>
+        /// <param name="rarity">Tier rolled by the generator.</param>
+        /// <param name="baseDamage">Rolled damage within the rarity band.</param>
+        /// <param name="roundsPerMinute">Rolled RPM within the rarity band.</param>
+        /// <param name="magCapacity">Rolled magazine size (int) within the rarity band.</param>
+        /// <param name="recoilPitchBase">Rolled upward pitch per shot (degrees).</param>
+        /// <param name="recoilYawSpread">Rolled lateral half-angle spread (degrees).</param>
+        /// <param name="bulletSpeed">Rolled projectile speed (m/s). Inert at alpha.</param>
+        internal void Initialize(
+            string weaponName,
+            WeaponRarity rarity,
+            float baseDamage,
+            float roundsPerMinute,
+            int magCapacity,
+            float recoilPitchBase,
+            float recoilYawSpread,
+            float bulletSpeed)
+        {
+            _weaponName       = weaponName;
+            _rarity           = rarity;
+            _baseDamage       = baseDamage;
+            _roundsPerMinute  = roundsPerMinute;
+            _magCapacity      = magCapacity;
+            _recoilPitchBase  = recoilPitchBase;
+            _recoilYawSpread  = recoilYawSpread;
+            _bulletSpeed      = bulletSpeed;
+        }
     }
 
     // -----------------------------------------------------------------------

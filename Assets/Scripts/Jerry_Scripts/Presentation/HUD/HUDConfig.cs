@@ -50,6 +50,17 @@ namespace JerryScripts.Presentation.HUD
         [Tooltip("Background color of the health bar track.")]
         [SerializeField] private Color _healthBarBgColor = new Color(0.3f, 0.3f, 0.3f, 1f);
 
+        [Header("Weapon Panel (HUD-06) — Block B")]
+        [Tooltip("Physical height of the weapon panel (Block B) in metres. Default: 0.06m (ui-hud-system.md Tuning Knobs).")]
+        [Min(0.02f)]
+        [SerializeField] private float _weaponPanelHeight = 0.06f;
+
+        [Tooltip(
+            "Generic pistol silhouette sprite shown on the weapon panel (left side, ~30×20mm). " +
+            "Assign in editor. Null is acceptable at runtime — panel still functions, " +
+            "but no icon will render and a warning is logged (ui-hud-system.md Rule 19).")]
+        [SerializeField] private Sprite _pistolSilhouette;
+
         [Header("Font")]
         [Tooltip("Font asset for all HUD text. Drag any .ttf or .otf font asset here. " +
                  "If left empty, the system will attempt to use a built-in font.")]
@@ -85,6 +96,19 @@ namespace JerryScripts.Presentation.HUD
 
         /// <summary>Health bar background track color.</summary>
         public Color HealthBarBgColor => _healthBarBgColor;
+
+        /// <summary>
+        /// Physical height of the weapon panel (Block B) in metres.
+        /// Default: 0.06m. Total canvas height when weapon held: PanelHeight + WeaponPanelHeight.
+        /// </summary>
+        public float WeaponPanelHeight => _weaponPanelHeight;
+
+        /// <summary>
+        /// Generic pistol silhouette sprite for HUD-06 left column.
+        /// May be null — HUDSystem logs a warning and renders the panel without the icon.
+        /// Jerry assigns the sprite asset in editor work.
+        /// </summary>
+        public Sprite PistolSilhouette => _pistolSilhouette;
 
         /// <summary>Font asset for HUD text. May be null (system falls back to built-in).</summary>
         public Font Font => _font;

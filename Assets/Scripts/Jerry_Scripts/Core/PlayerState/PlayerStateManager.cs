@@ -139,6 +139,15 @@ namespace JerryScripts.Core.PlayerState
             if (CurrentState == PlayerState.Paused)
                 _playerRig?.TransitionTo(RigState.Active);
 
+            // EditMode tests run with Application.isPlaying == false; SceneManager.LoadScene
+            // is PlayMode-only and throws otherwise. Soft re-init exercises the same
+            // state-reset path Awake runs in a freshly loaded scene.
+            if (!Application.isPlaying)
+            {
+                InitializeState();
+                return;
+            }
+
             // Full scene reload — resets all GameObjects, pools, and state cleanly.
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }

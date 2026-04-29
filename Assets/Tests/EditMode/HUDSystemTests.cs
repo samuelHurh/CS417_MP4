@@ -2,6 +2,7 @@ using System;
 using NUnit.Framework;
 using UnityEngine;
 using JerryScripts.Core.PlayerState;
+using JerryScripts.Feature.WeaponHandling;
 using JerryScripts.Foundation;
 using JerryScripts.Presentation.HUD;
 using UnityEngine.XR.Interaction.Toolkit.Inputs.Haptics;
@@ -263,6 +264,241 @@ namespace JerryScripts.Tests.EditMode
             Assert.That(config.LocalOffset.y, Is.LessThanOrEqualTo(0.12f));
 
             UnityEngine.Object.DestroyImmediate(config);
+        }
+
+        // ===================================================================
+        // HUD-06 Tests (S2-009) — weapon stat panel (Block B)
+        // ===================================================================
+
+        /// <summary>
+        /// Creates a <see cref="WeaponData"/> and calls <see cref="WeaponData.Initialize"/>
+        /// with the supplied values, returning the instance. Caller is responsible for
+        /// DestroyImmediate. Uses reflection because Initialize is internal.
+        /// </summary>
+        private static WeaponData CreateWeaponData(
+            string name, JerryScripts.Feature.WeaponHandling.WeaponRarity rarity,
+            float baseDamage, float rpm, int magCap,
+            float recoilPitch, float recoilYaw, float bulletSpeed)
+        {
+            var data = ScriptableObject.CreateInstance<WeaponData>();
+            var init = typeof(WeaponData).GetMethod(
+                "Initialize",
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Public);
+            Assert.IsNotNull(init, "WeaponData.Initialize method not found via reflection.");
+            init.Invoke(data, new object[] { name, rarity, baseDamage, rpm, magCap, recoilPitch, recoilYaw, bulletSpeed });
+            return data;
+        }
+
+        /// <summary>
+        /// HUD-06: calling TestSimulateEquipChanged(true) must make Block B active.
+        /// </summary>
+        [Test]
+        public void HUD06_OnEquipChanged_true_showsBlockB()
+        {
+            // Arrange
+            var data = CreateWeaponData("Basic Pistol", JerryScripts.Feature.WeaponHandling.WeaponRarity.Basic,
+                20f, 180f, 11, 5.5f, 2.0f, 90f);
+
+            // Act
+            _hud.TestSimulateEquipChanged(true, data);
+
+            // Assert
+            Assert.That(_hud.TestIsWeaponBlockBActive(), Is.True,
+                "Block B must be active when weapon is equipped (ui-hud-system.md Rule 18).");
+
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        /// <summary>
+        /// HUD-06: calling TestSimulateEquipChanged(false) must hide Block B.
+        /// </summary>
+        [Test]
+        public void HUD06_OnEquipChanged_false_hidesBlockB()
+        {
+            // Arrange — equip first, then unequip
+            var data = CreateWeaponData("Basic Pistol", JerryScripts.Feature.WeaponHandling.WeaponRarity.Basic,
+                20f, 180f, 11, 5.5f, 2.0f, 90f);
+            _hud.TestSimulateEquipChanged(true, data);
+
+            // Act
+            _hud.TestSimulateEquipChanged(false);
+
+            // Assert
+            Assert.That(_hud.TestIsWeaponBlockBActive(), Is.False,
+                "Block B must be hidden when weapon is unequipped (ui-hud-system.md Rule 18).");
+
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        /// <summary>
+        /// HUD-06: rarity name color for Basic must match the warm off-white
+        /// defined in <see cref="HUDSystem.GetRarityColor"/>.
+        /// </summary>
+        [Test]
+        public void HUD06_RarityName_color_matches_Basic()
+        {
+            // Arrange
+            var data = CreateWeaponData("Basic Pistol", JerryScripts.Feature.WeaponHandling.WeaponRarity.Basic,
+                20f, 180f, 11, 5.5f, 2.0f, 90f);
+            _hud.TestSimulateEquipChanged(true, data);
+
+            Color expected = HUDSystem.GetRarityColor(JerryScripts.Feature.WeaponHandling.WeaponRarity.Basic);
+
+            // Act
+            Color actual = _hud.TestGetRarityNameColor();
+
+            // Assert
+            Assert.That(actual.r, Is.EqualTo(expected.r).Within(0.01f), "Basic rarity color R channel mismatch.");
+            Assert.That(actual.g, Is.EqualTo(expected.g).Within(0.01f), "Basic rarity color G channel mismatch.");
+            Assert.That(actual.b, Is.EqualTo(expected.b).Within(0.01f), "Basic rarity color B channel mismatch.");
+            Assert.That(actual.a, Is.EqualTo(expected.a).Within(0.01f), "Basic rarity color A channel mismatch.");
+
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        /// <summary>
+        /// HUD-06: rarity name color for Legendary must match gold as defined in
+        /// <see cref="HUDSystem.GetRarityColor"/>.
+        /// </summary>
+        [Test]
+        public void HUD06_RarityName_color_matches_Legendary()
+        {
+            // Arrange
+            var data = CreateWeaponData("Legendary Pistol", JerryScripts.Feature.WeaponHandling.WeaponRarity.Legendary,
+                53f, 285f, 18, 3.2f, 0.8f, 200f);
+            _hud.TestSimulateEquipChanged(true, data);
+
+            Color expected = HUDSystem.GetRarityColor(JerryScripts.Feature.WeaponHandling.WeaponRarity.Legendary);
+
+            // Act
+            Color actual = _hud.TestGetRarityNameColor();
+
+            // Assert
+            Assert.That(actual.r, Is.EqualTo(expected.r).Within(0.01f), "Legendary rarity color R channel mismatch.");
+            Assert.That(actual.g, Is.EqualTo(expected.g).Within(0.01f), "Legendary rarity color G channel mismatch.");
+            Assert.That(actual.b, Is.EqualTo(expected.b).Within(0.01f), "Legendary rarity color B channel mismatch.");
+            Assert.That(actual.a, Is.EqualTo(expected.a).Within(0.01f), "Legendary rarity color A channel mismatch.");
+
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        /// <summary>
+        /// HUD-06 DMG bar normalization formula: fill = baseDamage / 58f.
+        /// For baseDamage = 29, fill must equal 29/58 = 0.5 within 0.001.
+        /// (weapon-generation.md §Stat-Bar Normalization.)
+        /// </summary>
+        [Test]
+        public void HUD06_BarFill_DMG_formula()
+        {
+            // Arrange — baseDamage 29, Legendary max denominator 58
+            const float BaseDamage = 29f;
+            const float Expected   = 29f / 58f; // 0.5
+            var data = CreateWeaponData("Basic Pistol", JerryScripts.Feature.WeaponHandling.WeaponRarity.Basic,
+                BaseDamage, 180f, 11, 5.5f, 2.0f, 90f);
+
+            // Act
+            _hud.TestSimulateEquipChanged(true, data);
+            float actual = _hud.TestGetBarFillDmg();
+
+            // Assert
+            Assert.That(actual, Is.EqualTo(Expected).Within(0.001f),
+                $"DMG bar fill for baseDamage={BaseDamage} must be {Expected:F4} (= {BaseDamage}/58). Got {actual:F4}.");
+
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        /// <summary>
+        /// HUD-06 REC bar normalization formula (inverted):
+        ///   fill = (6.5 - recoilPitch) / (6.5 - 2.5) = (6.5 - pitch) / 4.0.
+        /// For pitch = 4.5: fill = (6.5 - 4.5) / 4.0 = 2.0 / 4.0 = 0.5 within 0.001.
+        /// Less pitch (less recoil) → fuller bar.
+        /// (weapon-generation.md §Stat-Bar Normalization.)
+        /// </summary>
+        [Test]
+        public void HUD06_BarFill_REC_inverse_formula()
+        {
+            // Arrange — pitch 4.5 → expected fill 0.5
+            const float Pitch    = 4.5f;
+            const float Expected = (6.5f - Pitch) / (6.5f - 2.5f); // 0.5
+            var data = CreateWeaponData("Basic Pistol", JerryScripts.Feature.WeaponHandling.WeaponRarity.Basic,
+                20f, 180f, 11, Pitch, 2.0f, 90f);
+
+            // Act
+            _hud.TestSimulateEquipChanged(true, data);
+            float actual = _hud.TestGetBarFillRec();
+
+            // Assert
+            Assert.That(actual, Is.EqualTo(Expected).Within(0.001f),
+                $"REC bar fill for pitch={Pitch} must be {Expected:F4}. " +
+                $"Formula: (6.5 - {Pitch}) / 4.0 = {Expected:F4}. Got {actual:F4}.");
+
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+
+        /// <summary>
+        /// HUD-06: all five bar fill values must be clamped to [0, 1].
+        /// We use an out-of-range WeaponData (baseDamage = 999) to confirm clamping.
+        /// (weapon-generation.md §Stat-Bar Normalization: "All results are clamped to [0, 1]".)
+        /// </summary>
+        [Test]
+        public void HUD06_BarFill_clampedTo_unitInterval()
+        {
+            // Arrange — deliberately extreme values that would overflow without clamping
+            var data = ScriptableObject.CreateInstance<WeaponData>();
+
+            // Inject extreme values via Initialize to force all bars above 1.0 before clamping.
+            // BulletSpeed=9999 → 9999/230 >> 1; BaseDamage=9999 → 9999/58 >> 1.
+            // RecoilPitch=1.0 (min band) → (6.5-1.0)/4.0 = 1.375 >> 1 before clamp.
+            var init = typeof(WeaponData).GetMethod(
+                "Initialize",
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic |
+                System.Reflection.BindingFlags.Public);
+            Assert.IsNotNull(init, "WeaponData.Initialize not found.");
+            init.Invoke(data, new object[]
+            {
+                "Overflow Pistol",
+                JerryScripts.Feature.WeaponHandling.WeaponRarity.Legendary,
+                999f,   // baseDamage  — will produce fill >> 1 before clamp
+                900f,   // rpm         — will produce fill >> 1 before clamp
+                30,     // magCapacity — will produce fill >> 1 before clamp
+                1.0f,   // recoilPitch — (6.5-1.0)/4.0 = 1.375 before clamp
+                5.0f,   // recoilYaw   — not a bar (spread is not shown in HUD-06)
+                9999f   // bulletSpeed — will produce fill >> 1 before clamp
+            });
+
+            // Act
+            _hud.TestSimulateEquipChanged(true, data);
+
+            // Assert — every bar fill must be exactly 1.0 (clamped) or less
+            Assert.That(_hud.TestGetBarFillDmg(), Is.LessThanOrEqualTo(1.0f),
+                "DMG bar fill must be clamped to 1.0.");
+            Assert.That(_hud.TestGetBarFillDmg(), Is.GreaterThanOrEqualTo(0.0f),
+                "DMG bar fill must not go below 0.0.");
+
+            Assert.That(_hud.TestGetBarFillRpm(), Is.LessThanOrEqualTo(1.0f),
+                "RPM bar fill must be clamped to 1.0.");
+            Assert.That(_hud.TestGetBarFillRpm(), Is.GreaterThanOrEqualTo(0.0f),
+                "RPM bar fill must not go below 0.0.");
+
+            Assert.That(_hud.TestGetBarFillMag(), Is.LessThanOrEqualTo(1.0f),
+                "MAG bar fill must be clamped to 1.0.");
+            Assert.That(_hud.TestGetBarFillMag(), Is.GreaterThanOrEqualTo(0.0f),
+                "MAG bar fill must not go below 0.0.");
+
+            Assert.That(_hud.TestGetBarFillRec(), Is.LessThanOrEqualTo(1.0f),
+                "REC bar fill must be clamped to 1.0.");
+            Assert.That(_hud.TestGetBarFillRec(), Is.GreaterThanOrEqualTo(0.0f),
+                "REC bar fill must not go below 0.0.");
+
+            Assert.That(_hud.TestGetBarFillVel(), Is.LessThanOrEqualTo(1.0f),
+                "VEL bar fill must be clamped to 1.0.");
+            Assert.That(_hud.TestGetBarFillVel(), Is.GreaterThanOrEqualTo(0.0f),
+                "VEL bar fill must not go below 0.0.");
+
+            UnityEngine.Object.DestroyImmediate(data);
         }
     }
 }
