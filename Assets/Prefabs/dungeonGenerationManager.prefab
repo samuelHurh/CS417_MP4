@@ -1,0 +1,105 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6700711855423376909
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 687822721543288179}
+  - component: {fileID: 5432534227662450783}
+  - component: {fileID: 3548674523661663188}
+  m_Layer: 0
+  m_Name: dungeonGenerationManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &687822721543288179
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6700711855423376909}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 47.82936, y: 0, z: 10.80685}
+  m_LocalScale: {x: 1.0000002, y: 1, z: 1.0000002}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5432534227662450783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6700711855423376909}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27c78cf0a161e35498a289915b49d4b7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  roomPrefabArr:
+  - {fileID: 6426891793467078225, guid: 11fffd4e00231a84da7ad9c61217e345, type: 3}
+  - {fileID: 2740656133658986801, guid: 5990667374df2454ebcbf54cc96410eb, type: 3}
+  - {fileID: 6895872211244023908, guid: 2ef19a4ce9e8da841a2eca0a7e5a377f, type: 3}
+  - {fileID: 6717966668169160899, guid: 42ea4f82a48a1af47a7e4900e51b4993, type: 3}
+  - {fileID: 1210934517082164774, guid: 5f4b523c6be30dd4e88234d0fba00fef, type: 3}
+  - {fileID: 1074153922349251228, guid: d9662041e7a3c5f4eb60272d10a67b88, type: 3}
+  - {fileID: 5276399073558660308, guid: 370fbc492dc34404794eed7414efc5be, type: 3}
+  - {fileID: 5140831745069069842, guid: c91d4d5529b32ac4bae03cafe3aba634, type: 3}
+  - {fileID: 2842530582568355820, guid: 1ecd2b897da69b44e955b2beaaccca13, type: 3}
+  - {fileID: 3423683813887089905, guid: 0fd6b34048d202d41af7b64500859522, type: 3}
+  hallway: {fileID: 8490138314892199506, guid: 38295c7fb6b40e84fb125dd03e9567fb, type: 3}
+  hallwayCorner: {fileID: 6231377162118026581, guid: 526bb55042045d446835f96a3a101a78,
+    type: 3}
+  hallways: []
+  hallwayNumber: 0
+  rooms: []
+  origin: {fileID: 0}
+  minRoomsBeforeBoss: 0
+  numNormalRooms: 3
+  start_idx_nonspecial: 2
+  fromEntranceMarkerRef: {fileID: 2239650452283569139, guid: 66b3f963bae3f20419b06cf9db25dcac,
+    type: 3}
+  toEntranceMarkerRef: {fileID: 4422449443305769296, guid: d3886eef7c9462a4f86c77284fd89712,
+    type: 3}
+  playerSpawn: {fileID: 0}
+  XROriginRef: {fileID: 0}
+  pistolRef: {fileID: 373440112650085552, guid: ef395ad6f21f57246bbdf3dfbb8e6ecb,
+    type: 3}
+  magRef: {fileID: 5018942033955000659, guid: cb516eb16bbc1e841b89472302801596, type: 3}
+  roomLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  elevatorEntry: {fileID: 1265679930042520590, guid: 641fdb582cd21cc48b87632e04cee2f4,
+    type: 3}
+  goalManagerRef: {fileID: 3548674523661663188}
+--- !u!114 &3548674523661663188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6700711855423376909}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe50f90b331083c478428c07902e6e40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetPrefab: {fileID: 0}
+  activeTargets: []
+  bossEntranceLockPrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
+  bossEntranceLock: {fileID: 0}
+  keyArray:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  remainingTargets: 0
