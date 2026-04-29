@@ -1,113 +1,210 @@
+using System.Collections.Generic;
 using UnityEngine;
+
+public enum SupportDecision
+{
+    Attack,
+    Heal
+}
 
 public class SquadBlackboard : MonoBehaviour
 {
-    // This reference points back to the squad manager that owns this shared memory object.
-    [SerializeField] private SquadManager squadManager;
-    // This value stores the current squad-wide alert/search/reset mode.
-    [SerializeField] private SquadState squadState = SquadState.Idle;
-    // This reference stores the player transform so all squad members can reason about the same target.
-    [SerializeField] private Transform playerTarget;
-    // This position stores the last exact place where any squad member confirmed the player.
-    [SerializeField] private Vector3 lastKnownPlayerPosition;
-    // This position stores the current center point enemies should use when searching.
-    [SerializeField] private Vector3 searchCenter;
-    // This radius defines how far from the search center enemies should treat as valid search space.
-    [SerializeField] private float searchRadius = 4f;
-    // This duration defines how long the squad should stay in the searching state before resetting.
-    [SerializeField] private float searchDuration = 5f;
-    // This duration defines how long the squad should stay in reset mode before returning to idle.
-    [SerializeField] private float resetDuration = 2f;
+    [SerializeField] private List<EnemyAIController> registeredEnemies = new List<EnemyAIController>();
+    [SerializeField] private List<EnemyAIController> livingEnemies = new List<EnemyAIController>();
 
-    // This flag tracks whether the squad currently has a valid shared last-known player position.
-    private bool hasLastKnownPlayerPosition;
-    // This timestamp records when the player was last confirmed by any enemy in the squad.
-    private float lastSightedTime = float.NegativeInfinity;
-    // This count tracks how many registered enemies currently have line of sight to the player.
-    private int enemiesWithLineOfSight;
+    public IReadOnlyList<EnemyAIController> RegisteredEnemies => registeredEnemies;
+    public IReadOnlyList<EnemyAIController> LivingEnemies => livingEnemies;
 
-    public SquadManager SquadManager => squadManager;
-    public SquadState SquadState => squadState;
-    public Transform PlayerTarget => playerTarget;
-    public Vector3 LastKnownPlayerPosition => lastKnownPlayerPosition;
-    public Vector3 SearchCenter => searchCenter;
-    public float SearchRadius => searchRadius;
-    public float SearchDuration => searchDuration;
-    public float ResetDuration => resetDuration;
-    public bool HasLastKnownPlayerPosition => hasLastKnownPlayerPosition;
-    public float LastSightedTime => lastSightedTime;
-    public int EnemiesWithLineOfSight => enemiesWithLineOfSight;
-    public bool IsPlayerVisibleToSquad => enemiesWithLineOfSight > 0;
-
-    // This function auto-fills the owning squad manager if the reference was not assigned in the inspector.
-    private void Awake()
+    public void RegisterLivingEnemy(EnemyAIController enemy)
     {
-        if (squadManager == null)
+        if (enemy == null)
         {
-            squadManager = GetComponent<SquadManager>();
-        }
-    }
-
-    // This function initializes the blackboard with the squad manager and shared player reference.
-    public void Initialize(SquadManager manager, Transform player)
-    {
-        squadManager = manager;
-        playerTarget = player;
-    }
-
-    // This function updates the shared player target when the encounter is given a new player reference.
-    public void SetPlayerTarget(Transform player)
-    {
-        playerTarget = player;
-    }
-
-    // This function forces the squad into a specific high-level state.
-    public void SetSquadState(SquadState newState)
-    {
-        squadState = newState;
-    }
-
-    // This function records a confirmed player sighting and upgrades the squad into alerted state.
-    public void ReportPlayerSighted(Vector3 playerPosition, int visibleEnemyCount)
-    {
-        enemiesWithLineOfSight = Mathf.Max(visibleEnemyCount, 1);
-        lastKnownPlayerPosition = playerPosition;
-        searchCenter = playerPosition;
-        hasLastKnownPlayerPosition = true;
-        lastSightedTime = Time.time;
-        squadState = SquadState.Alerted;
-    }
-
-    // This function updates the number of enemies with current line of sight without changing other search data.
-    public void ReportVisibilityCount(int visibleEnemyCount)
-    {
-        enemiesWithLineOfSight = Mathf.Max(visibleEnemyCount, 0);
-    }
-
-    // This function transitions the squad into searching mode around the last confirmed player location.
-    public void BeginSearch()
-    {
-        if (!hasLastKnownPlayerPosition)
-        {
-            squadState = SquadState.Resetting;
             return;
         }
 
-        squadState = SquadState.Searching;
-        searchCenter = lastKnownPlayerPosition;
+        if (!registeredEnemies.Contains(enemy))
+        {
+            registeredEnemies.Add(enemy);
+        }
+
+        if (!livingEnemies.Contains(enemy))
+        {
+            livingEnemies.Add(enemy);
+        }
     }
 
-    // This function transitions the squad into reset mode after search behavior has finished.
-    public void BeginReset()
+    public void UnregisterLivingEnemy(EnemyAIController enemy)
     {
-        squadState = SquadState.Resetting;
+        livingEnemies.Remove(enemy);
+        livingEnemies.RemoveAll(livingEnemy => livingEnemy == null);
     }
 
-    // This function clears all alert memory so the squad can return to an idle baseline.
-    public void ClearAlert()
+    [Header("Support Decision Table")]
+    [SerializeField] private SupportDecision[] baseTable =
     {
-        enemiesWithLineOfSight = 0;
-        hasLastKnownPlayerPosition = false;
-        squadState = SquadState.Idle;
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Attack,
+        SupportDecision.Heal,
+        SupportDecision.Heal,
+        SupportDecision.Heal,
+        SupportDecision.Heal,
+    };
+
+    [SerializeField] private int healSlotsAtOrBelow75Percent = 4;
+    [SerializeField] private int healSlotsAtOrBelow50Percent = 6;
+    [SerializeField] private int healSlotsAtOrBelow25Percent = 8;
+
+    private SupportDecision[] workingTable;
+
+    public float GetSquadHealthPercent()
+    {
+        registeredEnemies.RemoveAll(enemy => enemy == null);
+        livingEnemies.RemoveAll(enemy => enemy == null || enemy.IsDead);
+
+        float totalCurrentHealth = 0f;
+        float totalMaxHealth = 0f;
+
+        foreach (EnemyAIController enemy in registeredEnemies)
+        {
+            EnemyRoleBrain roleBrain = enemy.RoleBrain;
+
+            if (roleBrain == null)
+            {
+                continue;
+            }
+
+            totalMaxHealth += roleBrain.MaxHealth;
+            totalCurrentHealth += enemy.IsDead ? 0f : roleBrain.CurrentHealth;
+        }
+
+        if (totalMaxHealth <= 0f)
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(totalCurrentHealth / totalMaxHealth);
+    }
+
+
+    public void AdjustTable()
+    {
+        RebuildTableFromSquadHealth();
+    }
+
+    public SupportDecision PollTable()
+    {
+        RebuildTableFromSquadHealth();
+        return workingTable[Random.Range(0, workingTable.Length)];
+    }
+
+    public EnemyAIController GetLowestHealthLivingEnemy(EnemyAIController excludeEnemy = null)
+    {
+        livingEnemies.RemoveAll(enemy => enemy == null || enemy.IsDead);
+
+        EnemyAIController lowestHealthEnemy = null;
+        float lowestHealthPercent = float.PositiveInfinity;
+
+        foreach (EnemyAIController enemy in livingEnemies)
+        {
+            if (enemy == excludeEnemy || enemy.RoleBrain == null || !enemy.RoleBrain.IsAlive)
+            {
+                continue;
+            }
+
+            if (enemy.RoleBrain.HealthPercent < lowestHealthPercent)
+            {
+                lowestHealthPercent = enemy.RoleBrain.HealthPercent;
+                lowestHealthEnemy = enemy;
+            }
+        }
+
+        return lowestHealthEnemy;
+    }
+
+    public EnemyAIController GetRandomLivingEnemy(EnemyAIController excludeEnemy = null)
+    {
+        livingEnemies.RemoveAll(enemy => enemy == null || enemy.IsDead);
+
+        List<EnemyAIController> candidates = new List<EnemyAIController>();
+
+        foreach (EnemyAIController enemy in livingEnemies)
+        {
+            if (enemy == excludeEnemy || enemy.RoleBrain == null || !enemy.RoleBrain.IsAlive)
+            {
+                continue;
+            }
+
+            candidates.Add(enemy);
+        }
+
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        return candidates[Random.Range(0, candidates.Count)];
+    }
+
+    private void RebuildTableFromSquadHealth()
+    {
+        if (baseTable == null || baseTable.Length == 0)
+        {
+            workingTable = new[] { SupportDecision.Attack };
+            return;
+        }
+
+        workingTable = new SupportDecision[baseTable.Length];
+        baseTable.CopyTo(workingTable, 0);
+
+        int healSlotCount = GetHealSlotCount(GetSquadHealthPercent());
+        ConvertRandomSlotsToHeal(healSlotCount);
+    }
+
+    private int GetHealSlotCount(float squadHealthPercent)
+    {
+        if (squadHealthPercent <= 0.25f)
+        {
+            return healSlotsAtOrBelow25Percent;
+        }
+
+        if (squadHealthPercent <= 0.5f)
+        {
+            return healSlotsAtOrBelow50Percent;
+        }
+
+        if (squadHealthPercent <= 0.75f)
+        {
+            return healSlotsAtOrBelow75Percent;
+        }
+
+        return 0;
+    }
+
+    private void ConvertRandomSlotsToHeal(int requestedHealSlots)
+    {
+        int maxAttempts = workingTable.Length * 4;
+        int numSuccessfulChanges = 0;
+        int healSlotTarget = Mathf.Clamp(requestedHealSlots, 0, workingTable.Length);
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            if (numSuccessfulChanges >= healSlotTarget)
+            {
+                break;
+            }
+
+            int randIndex = Random.Range(0, workingTable.Length);
+            if (workingTable[randIndex] != SupportDecision.Heal)
+            {
+                workingTable[randIndex] = SupportDecision.Heal;
+                numSuccessfulChanges++;
+            }
+        }
     }
 }
