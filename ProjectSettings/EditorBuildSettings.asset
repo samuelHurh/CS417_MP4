@@ -6,9 +6,37 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Sam_Scene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/BNG Framework/Scenes/Weapons.unity
+    guid: 2626939ed08e1ec41bee0433a7f068d9
+  - enabled: 1
+    path: Assets/BNG Framework/Scenes/XR Demo.unity
+    guid: a1360534006d3f845bc79b46b93cfec5
+  - enabled: 1
+    path: Assets/BNG Framework/Scenes/Scene Transitioning.unity
+    guid: 9d7c9629abf9c99449e358b0938b47d0
+  - enabled: 1
+    path: Assets/BNG Framework/Scenes/Physics Hands.unity
+    guid: 34a4579517c578e4080d0a6ef2c96294
+  - enabled: 1
+    path: Assets/BNG Framework/Scenes/Rigidbody Player.unity
+    guid: 57fc97c5771a777449aa8bd02514df22
+  - enabled: 1
+    path: Assets/BNG Framework/Scenes/Vehicle Example.unity
+    guid: d96233ee44d985d4fb8dc23a907c06eb
+  - enabled: 1
+    path: Assets/BNG Framework/Scenes/Quest Demo.unity
+    guid: 20abffae0ea5004438fe0e95b6627841
   m_configObjects:
-    com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
-    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 6a15d2176d74eb74689e18295ae0ba72, type: 2}
-    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: f5436c9e58a6b6f498d49a98df331e4e, type: 2}
+    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 01f73b8a76190bb42be439c8d28f597c,
+      type: 2}
+    Unity.XR.OpenVR.Settings: {fileID: 11400000, guid: 2ec24d39f7b5ac84aad7e5df7b4fd3ea,
+      type: 2}
+    WebXR.Settings: {fileID: 11400000, guid: fe9659bb224bb054bb1dbca065d1d318, type: 2}
+    com.unity.input.settings: {fileID: 11400000, guid: 7c0d65f8139523c47a3ac0b1587ccdf6,
+      type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 6a15d2176d74eb74689e18295ae0ba72,
+      type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: c8189173763a5e84daa63473c0f7182c,
+      type: 2}
+    xr.sdk.mock-hmd.settings: {fileID: 11400000, guid: 2ae0a4a226e8d9e4aba56d1e2eb3977b,
+      type: 2}
