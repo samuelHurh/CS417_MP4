@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2eddc0546ba5daf468d3d7a46f57fb9b, type: 3}
+  m_Name: HUDConfig
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Presentation.HUD.HUDConfig
+  _localOffset: {x: 0, y: -0.06, z: -0.15}
+  _localRotation: {x: 30, y: 0, z: 0}
+  _panelWidth: 0.12
+  _panelHeight: 0.04
+  _bgOpacity: 0.7
+  _bgColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+  _textColor: {r: 1, g: 0.9764151, b: 0.9764151, a: 1}
+  _healthBarFillColor: {r: 0.9811321, g: 0.9811321, b: 0.96262014, a: 1}
+  _healthBarBgColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
+  _font: {fileID: 0}

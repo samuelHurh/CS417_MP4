@@ -1,6 +1,7 @@
 using System;
 using JerryScripts.Foundation;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace JerryScripts.Core.PlayerState
 {
@@ -95,15 +96,23 @@ namespace JerryScripts.Core.PlayerState
         private void OnEnable()
         {
             if (_playerRig != null)
+            {
                 _playerRig.OnDamageReceived += OnRigDamageReceived;
+                ((IRigStateProvider)_playerRig).OnStateChanged += OnRigStateChanged;
+            }
             else
+            {
                 Debug.LogWarning("[PlayerStateManager] PlayerRig reference is null — damage will not reduce HP. Assign via Inspector.", this);
+            }
         }
 
         private void OnDisable()
         {
             if (_playerRig != null)
+            {
                 _playerRig.OnDamageReceived -= OnRigDamageReceived;
+                ((IRigStateProvider)_playerRig).OnStateChanged -= OnRigStateChanged;
+            }
         }
 
         // ===================================================================
@@ -124,7 +133,26 @@ namespace JerryScripts.Core.PlayerState
         {
             if (CurrentState == PlayerState.Running) return;
 
-            InitializeState();
+            // Unpause the rig before reloading — prevents the paused state from
+            // carrying over into the new scene (Input System action state persists
+            // across scene loads and can re-trigger pause immediately).
+            if (CurrentState == PlayerState.Paused)
+                _playerRig?.TransitionTo(RigState.Active);
+
+            // Full scene reload — resets all GameObjects, pools, and state cleanly.
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        /// <inheritdoc/>
+        public void RequestResume()
+        {
+            if (CurrentState != PlayerState.Paused) return;
+
+            // Tell the rig to return to Active — this will fire OnRigStateChanged
+            // which transitions PSM back to Running. But we also transition directly
+            // here for immediate UI response.
+            _playerRig?.TransitionTo(RigState.Active);
+            TransitionTo(PlayerState.Running);
         }
 
         /// <inheritdoc/>
@@ -135,6 +163,31 @@ namespace JerryScripts.Core.PlayerState
 #else
             Application.Quit();
 #endif
+        }
+
+        // ===================================================================
+        // Private — rig state relay (pause/unpause)
+        // ===================================================================
+
+        /// <summary>
+        /// Relays <see cref="RigState"/> transitions from <see cref="PlayerRig"/>
+        /// into <see cref="PlayerState"/> transitions. Handles pause toggle and
+        /// resume-after-pause. Death is handled separately via <see cref="TriggerDeath"/>.
+        /// </summary>
+        private void OnRigStateChanged(RigState newRigState)
+        {
+            switch (newRigState)
+            {
+                case RigState.Paused:
+                    if (CurrentState == PlayerState.Running)
+                        TransitionTo(PlayerState.Paused);
+                    break;
+
+                case RigState.Active:
+                    if (CurrentState == PlayerState.Paused)
+                        TransitionTo(PlayerState.Running);
+                    break;
+            }
         }
 
         // ===================================================================

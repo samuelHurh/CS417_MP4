@@ -207,7 +207,7 @@ Transform:
   m_GameObject: {fileID: 1581944027244523330}
   serializedVersion: 2
   m_LocalRotation: {x: -0.00000003774895, y: -1.110223e-16, z: 1.11022296e-16, w: 1}
-  m_LocalPosition: {x: -1.24168, y: 0.0335, z: -0.39587}
+  m_LocalPosition: {x: -1.24168, y: 0.0335, z: -0.391}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -704,6 +704,8 @@ GameObject:
   - component: {fileID: 8256288893580583003}
   - component: {fileID: 4200877696606393641}
   - component: {fileID: 8334037579099341680}
+  - component: {fileID: -1105779108200644888}
+  - component: {fileID: 8302260746071336294}
   m_Layer: 6
   m_Name: Pistol_Basic
   m_TagString: Untagged
@@ -910,9 +912,46 @@ MonoBehaviour:
   _data: {fileID: 11400000, guid: 911fac9289ae70f408b06d3acfb8b9c7, type: 2}
   _muzzleTransform: {fileID: 3541524932393681833}
   _magWellTransform: {fileID: 3435739232576871596}
+  _magMeshRenderer: {fileID: 1642284206763085043}
   _primaryButtonAction: {fileID: 11711766586467970, guid: e0ca4504471ca124088e1e2cfe6804ae, type: 3}
   _secondaryButtonAction: {fileID: -1644001223835636349, guid: e0ca4504471ca124088e1e2cfe6804ae, type: 3}
   _triggerAction: {fileID: -5684558904543120851, guid: e0ca4504471ca124088e1e2cfe6804ae, type: 3}
+--- !u!65 &-1105779108200644888
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6663209520842765183}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.046294212, y: 0.20330736, z: 0.3267071}
+  m_Center: {x: -1.2399533, y: -0.028796151, z: -0.39183897}
+--- !u!114 &8302260746071336294
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6663209520842765183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0969b215dd149bf48b56fbd700bf4750, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JerryScripts::JerryScripts.Feature.WeaponHandling.MagWellSocket
+  _magWellTransform: {fileID: 3435739232576871596}
+  _weaponData: {fileID: 11400000, guid: 911fac9289ae70f408b06d3acfb8b9c7, type: 2}
+  _receiverObject: {fileID: 8334037579099341680}
 --- !u!1 &7773282125611047696
 GameObject:
   m_ObjectHideFlags: 0

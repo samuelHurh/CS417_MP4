@@ -30,5 +30,5 @@ MonoBehaviour:
   _hapticFireAmplitude: 0.8
   _hapticFireDuration: 0.04
   _hapticDryFireAmplitude: 0.2
-  _magazinePrefab: {fileID: 8544979627806492323, guid: 223614ea5858a1548bc13f7d0f8598c7, type: 3}
+  _magazinePrefab: {fileID: 0}
   _muzzleFlashPrefab: {fileID: 0}
