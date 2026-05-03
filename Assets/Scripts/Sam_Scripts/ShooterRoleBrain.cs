@@ -183,14 +183,14 @@ public class ShooterRoleBrain : EnemyRoleBrain
             Vector3 navHitPosition;
             if (controller.TryGetNearestNavMeshPosition(candidatePosition, 1f, out navHitPosition) == false)
             {
-                Debug.Log("Failing nav hit check");
+                //Debug.Log("Failing nav hit check");
                 continue;
             }
 
             //min max dist respect
             if (Vector3.Distance(transform.position, navHitPosition) <= repositionArrivalDistance)
             {
-                Debug.Log("Failing too-close reposition check");
+                //Debug.Log("Failing too-close reposition check");
                 continue;
             }
 
@@ -198,7 +198,7 @@ public class ShooterRoleBrain : EnemyRoleBrain
 
             if (distanceToPlayer < minDist || distanceToPlayer > maxDist)
             {
-                Debug.Log("Failing max_dist respect");
+                //Debug.Log("Failing max_dist respect");
                 continue;
             }
 

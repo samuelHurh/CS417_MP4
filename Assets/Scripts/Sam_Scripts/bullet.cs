@@ -1,8 +1,10 @@
 using UnityEngine;
-using JerryScripts.Foundation;
 
 public class bullet : MonoBehaviour
 {
+    [SerializeField] private float damage = 10f;
+    [SerializeField] private string damageSourceId = "bullet";
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -27,7 +29,7 @@ public class bullet : MonoBehaviour
 
     private void CheckForPlayerHitbox(Collider hitCollider)
     {
-        if (hitCollider.GetComponent<PlayerHitbox>() == null)
+        if (!PlayerDamageHelpers.TryDamagePlayer(hitCollider, damage, damageSourceId, hitCollider.ClosestPoint(transform.position), this))
         {
             return;
         }

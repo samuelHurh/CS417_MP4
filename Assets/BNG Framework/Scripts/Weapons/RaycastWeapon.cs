@@ -102,14 +102,28 @@ namespace BNG {
         [Tooltip("How much force to apply to the tip of the barrel")]
         public Vector3 RecoilForce = Vector3.zero;
 
+        [Tooltip("Rotational recoil torque to apply to the weapon Rigidbody")]
+        public Vector3 RotationalRecoilForce = Vector3.zero;
+
         [Tooltip("How much force to apply to the tip of the barrel when two handing. The joint is looser when 2Handing a weapon, so this may actually need to be lower than RecoilForce")]
         public Vector3 RecoilForceTwoHanded = Vector3.zero;
+
+        [Tooltip("Rotational recoil torque to apply when two handing")]
+        public Vector3 RotationalRecoilForceTwoHanded = Vector3.zero;
 
 
         [Tooltip("Time in seconds to allow the gun to be springy")]
         public float RecoilDuration = 0.3f;
 
+        [Tooltip("Rotational spring used while recovering from recoil. Lower values return more slowly.")]
+        public float RecoilAngularReturnSpring = 500f;
+
+        [Tooltip("Rotational damping used while recovering from recoil. Higher values reduce snap / oscillation.")]
+        public float RecoilAngularReturnDamper = 1f;
+
         Rigidbody weaponRigid;
+        Coroutine angularRecoilReleaseRoutine;
+        float angularRecoilReleaseUntil;
 
         [Header("Raycast Options : ")]
         public LayerMask ValidLayers;
@@ -307,6 +321,9 @@ namespace BNG {
 
         void Start() {
             weaponRigid = GetComponent<Rigidbody>();
+            if (weaponRigid != null) {
+                weaponRigid.maxAngularVelocity = Mathf.Max(weaponRigid.maxAngularVelocity, 1000f);
+            }
 
             if (MuzzleFlashObject) {
                 MuzzleFlashObject.SetActive(false);
@@ -594,18 +611,89 @@ namespace BNG {
         // Apply recoil by requesting sprinyness and apply a local force to the muzzle point
         public virtual void ApplyRecoil() {
 
-            Vector3 recoilForce = grab.BeingHeldWithTwoHands ? RecoilForceTwoHanded : RecoilForce;
+            Vector3 recoilForce = grab.BeingHeldWithTwoHands && RecoilForceTwoHanded != Vector3.zero ? RecoilForceTwoHanded : RecoilForce;
+            Vector3 rotationalRecoilForce = grab.BeingHeldWithTwoHands && RotationalRecoilForceTwoHanded != Vector3.zero ? RotationalRecoilForceTwoHanded : RotationalRecoilForce;
 
-            if (weaponRigid != null && recoilForce != Vector3.zero) {
+            bool hasLinearRecoil = recoilForce != Vector3.zero;
+            bool hasRotationalRecoil = rotationalRecoilForce != Vector3.zero;
 
+            if (weaponRigid != null && (hasLinearRecoil || hasRotationalRecoil)) {
                 // Make weapon springy for X seconds
                 grab.RequestSpringTime(RecoilDuration);
+            }
 
+            if (weaponRigid != null && hasLinearRecoil) {
                 // Apply the Recoil Force
                 Transform muzzleTransform = GetMuzzlePointTransform();
                 
                 weaponRigid.AddForceAtPosition(muzzleTransform.TransformDirection(recoilForce), muzzleTransform.position, ForceMode.VelocityChange);
             }
+
+            if (weaponRigid != null && hasRotationalRecoil) {
+                Vector3 worldTorque = weaponRigid.transform.TransformDirection(rotationalRecoilForce);
+                weaponRigid.AddTorque(worldTorque, ForceMode.VelocityChange);
+
+                if (thisGrabber != null && thisGrabber.GetComponent<ConfigurableJoint>() != null) {
+                    angularRecoilReleaseUntil = Mathf.Max(angularRecoilReleaseUntil, Time.time + RecoilDuration);
+
+                    if (angularRecoilReleaseRoutine == null) {
+                        angularRecoilReleaseRoutine = StartCoroutine(FreeAngularDrive());
+                    }
+                }
+            }
+        }
+
+        IEnumerator FreeAngularDrive() {
+            ConfigurableJoint cj = thisGrabber != null ? thisGrabber.GetComponent<ConfigurableJoint>() : null;
+            if (cj == null) {
+                angularRecoilReleaseRoutine = null;
+                yield break;
+            }
+
+            JointDrive savedX = cj.angularXDrive;
+            JointDrive savedYZ = cj.angularYZDrive;
+            JointDrive savedSlerp = cj.slerpDrive;
+            RotationDriveMode savedRotationDriveMode = cj.rotationDriveMode;
+
+            ConfigurableJointMotion savedAX = cj.angularXMotion;
+            ConfigurableJointMotion savedAY = cj.angularYMotion;
+            ConfigurableJointMotion savedAZ = cj.angularZMotion;
+
+            JointDrive recoveryDrive = savedX;
+            recoveryDrive.positionSpring = RecoilAngularReturnSpring;
+            recoveryDrive.positionDamper = RecoilAngularReturnDamper;
+            recoveryDrive.maximumForce = float.MaxValue;
+
+            JointDrive recoverySlerp = savedSlerp;
+            recoverySlerp.positionSpring = RecoilAngularReturnSpring;
+            recoverySlerp.positionDamper = RecoilAngularReturnDamper;
+            recoverySlerp.maximumForce = float.MaxValue;
+
+            while (Time.time < angularRecoilReleaseUntil && cj != null) {
+                cj.rotationDriveMode = RotationDriveMode.Slerp;
+                cj.angularXDrive = recoveryDrive;
+                cj.angularYZDrive = recoveryDrive;
+                cj.slerpDrive = recoverySlerp;
+
+                cj.angularXMotion = ConfigurableJointMotion.Free;
+                cj.angularYMotion = ConfigurableJointMotion.Free;
+                cj.angularZMotion = ConfigurableJointMotion.Free;
+
+                yield return new WaitForFixedUpdate();
+            }
+
+            if (cj != null) {
+                cj.rotationDriveMode = savedRotationDriveMode;
+                cj.angularXDrive = savedX;
+                cj.angularYZDrive = savedYZ;
+                cj.slerpDrive = savedSlerp;
+
+                cj.angularXMotion = savedAX;
+                cj.angularYMotion = savedAY;
+                cj.angularZMotion = savedAZ;
+            }
+
+            angularRecoilReleaseRoutine = null;
         }
 
         // Hit something without Raycast. Apply damage, apply FX, etc.

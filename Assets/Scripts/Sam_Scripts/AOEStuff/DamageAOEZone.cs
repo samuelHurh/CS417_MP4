@@ -8,7 +8,7 @@ public class DamageAOEZone : AOEZoneBase
     [SerializeField] private float damageTickInterval = 1f;
     [SerializeField] private LayerMask playerLayerMask;
     [SerializeField] float damageTickDelay;
-    
+    [SerializeField] private string damageSourceId = "damage_aoe";
 
     protected override void OnAOEActivated()
     {
@@ -35,28 +35,25 @@ public class DamageAOEZone : AOEZoneBase
         int currTicks = 0;
         while (currTicks < numTicks)
         {
-            if (IsPlayerTouchingDamageCapsule())
-            {
-                Debug.Log("Player touching damage AOE");
-            }
+            DamagePlayersTouchingCapsule();
 
             yield return new WaitForSeconds(damageTickDelay);
             currTicks++;
         }
     }
 
-    private bool IsPlayerTouchingDamageCapsule()
+    private void DamagePlayersTouchingCapsule()
     {
         if (myVisual == null)
         {
-            return false;
+            return;
         }
 
         CapsuleCollider capsuleCollider = myVisual.GetComponentInChildren<CapsuleCollider>();
 
         if (capsuleCollider == null)
         {
-            return false;
+            return;
         }
 
         Transform capsuleTransform = capsuleCollider.transform;
@@ -68,9 +65,20 @@ public class DamageAOEZone : AOEZoneBase
 
         Vector3 pointA = center + axis * cylinderHalfHeight;
         Vector3 pointB = center - axis * cylinderHalfHeight;
-        Collider[] hits = Physics.OverlapCapsule(pointA, pointB, radius, playerLayerMask);
+        Collider[] hits = Physics.OverlapCapsule(
+            pointA,
+            pointB,
+            radius,
+            PlayerDamageHelpers.PlayerHitboxInclusiveMask(playerLayerMask));
 
-        return hits.Length > 0;
+        foreach (Collider hit in hits)
+        {
+            if (PlayerDamageHelpers.TryDamagePlayer(hit, damagePerTick, damageSourceId, hit.ClosestPoint(center), this))
+            {
+                Debug.Log("Player touching damage AOE");
+                return;
+            }
+        }
     }
 
     private static Vector3 GetCapsuleWorldAxis(CapsuleCollider capsuleCollider)

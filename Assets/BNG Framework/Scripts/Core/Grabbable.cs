@@ -978,6 +978,7 @@ namespace BNG {
 
         const float _MaxStiffnessSpring = 99999f;
         float _currentSpringStiffness = 99999f;
+        float _currentSlerpStiffness = 99999f;
 
         public virtual void UpdateFixedJoints() {
             // Set to continuous dynamic while being held
@@ -1033,6 +1034,7 @@ namespace BNG {
             if ((BeingHeldWithTwoHands || afterCollision) && !forceSpring) {
 
                 _currentSpringStiffness = _MaxStiffnessSpring;
+                _currentSlerpStiffness = _MaxStiffnessSpring;
 
                 // Make very rigid when sticking to hands
                 connectedJoint.rotationDriveMode = RotationDriveMode.Slerp;
@@ -1085,12 +1087,13 @@ namespace BNG {
                 sp.damper = 1;
 
                 _currentSpringStiffness = Mathf.Lerp(_currentSpringStiffness, CollisionSpring, Time.deltaTime * 1000f);
+                _currentSlerpStiffness = Mathf.Lerp(_currentSlerpStiffness, CollisionSlerp, Time.deltaTime * 1000f);
 
                 // Set X,Y, and Z drive to our values
                 setPositionSpring(_currentSpringStiffness, 1f);
 
                 // Slerp drive used for rotation
-                setSlerpDrive(_currentSpringStiffness, 1f);
+                setSlerpDrive(_currentSlerpStiffness, 1f);
             }
 
             if(BeingHeldWithTwoHands && SecondaryLookAtTransform != null) {

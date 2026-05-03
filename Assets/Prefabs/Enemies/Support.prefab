@@ -206,12 +206,15 @@ MonoBehaviour:
   eyePoint: {fileID: 0}
   lineOfSightMask:
     serializedVersion: 2
-    m_Bits: 891
+    m_Bits: 819
   maxThrowRange: 10
   targetGroundingSampleRadius: 3
-  projectileLobTargetPrefab: {fileID: 5039942771147549621, guid: 0f1ee67b303d7ef44ae5df21228692b2, type: 3}
-  damageAOEPrefab: {fileID: 5068870588583617131, guid: a2b2c2741c23970448d54e56d5c928fd, type: 3}
-  healAOEPrefab: {fileID: 7190984083637914072, guid: 796ca1327ceec5f468d89f34ace199d2, type: 3}
+  projectileLobTargetPrefab: {fileID: 5039942771147549621, guid: 0f1ee67b303d7ef44ae5df21228692b2,
+    type: 3}
+  damageAOEPrefab: {fileID: 5068870588583617131, guid: a2b2c2741c23970448d54e56d5c928fd,
+    type: 3}
+  healAOEPrefab: {fileID: 7190984083637914072, guid: 796ca1327ceec5f468d89f34ace199d2,
+    type: 3}
   throwWindup: 0.5
   minTimeBetweenThrows: 4
   repollDelay: 0.1
