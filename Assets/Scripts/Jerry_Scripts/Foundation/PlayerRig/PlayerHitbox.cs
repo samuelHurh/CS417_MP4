@@ -99,6 +99,8 @@ namespace JerryScripts.Foundation
             // Silent skip: not an error condition (see class-level doc).
             if (dmg.IsPlayerSource) return;
 
+            Debug.Log($"Player took {dmg.FinalDamage} damage", this);
+
             // Notify subscribers (PlayerRig, health system, HUD).
             OnDamageReceived?.Invoke(dmg.FinalDamage);
 

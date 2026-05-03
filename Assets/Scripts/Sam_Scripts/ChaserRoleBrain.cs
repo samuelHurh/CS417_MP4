@@ -97,27 +97,79 @@ public class ChaserRoleBrain : EnemyRoleBrain
     private void TryDamagePlayerInAttackRange()
     {
         Vector3 center = attackCenter != null ? attackCenter.position : transform.position;
-        Collider[] hits = Physics.OverlapSphere(center, attackRadius, playerLayerMask);
+        Collider[] hits = Physics.OverlapSphere(
+            center,
+            attackRadius,
+            PlayerDamageHelpers.PlayerHitboxInclusiveMask(playerLayerMask));
 
         foreach (Collider hit in hits)
         {
-            if (TryGetHittable(hit, out IHittable hittable))
+            if (PlayerDamageHelpers.TryDamagePlayer(hit, attackDamage, damageSourceId, hit.ClosestPoint(center), this))
             {
-                DamageEvent damageEvent = new DamageEvent(attackDamage, damageSourceId, false, hit.ClosestPoint(center));
-                hittable.TakeDamage(in damageEvent);
                 return;
             }
         }
     }
+}
 
-    private static bool TryGetHittable(Collider hit, out IHittable hittable)
+public static class PlayerDamageHelpers
+{
+    public static int PlayerHitboxInclusiveMask(LayerMask configuredMask)
     {
-        if (hit.TryGetComponent(out hittable))
+        int playerHitboxLayer = LayerMask.NameToLayer("PlayerHitbox");
+        int playerHitboxMask = playerHitboxLayer == -1 ? 0 : 1 << playerHitboxLayer;
+
+        if (configuredMask.value == 0)
+        {
+            return playerHitboxMask != 0 ? playerHitboxMask : Physics.DefaultRaycastLayers;
+        }
+
+        return configuredMask.value | playerHitboxMask;
+    }
+
+    public static bool TryDamagePlayer(Collider hitCollider, float damage, string sourceId, Vector3 hitPosition, Object logContext)
+    {
+        if (hitCollider == null)
+        {
+            return false;
+        }
+
+        if (TryGetHittable(hitCollider, out IHittable hittable))
+        {
+            DamageEvent damageEvent = new DamageEvent(damage, sourceId, false, hitPosition);
+            hittable.TakeDamage(in damageEvent);
+            return true;
+        }
+
+        if (!IsPlayerHitboxCollider(hitCollider))
+        {
+            return false;
+        }
+
+        Debug.Log($"Player took {damage} damage", logContext);
+        return true;
+    }
+
+    public static bool IsPlayerHitboxCollider(Collider hitCollider)
+    {
+        if (hitCollider == null)
+        {
+            return false;
+        }
+
+        int playerHitboxLayer = LayerMask.NameToLayer("PlayerHitbox");
+        return (playerHitboxLayer != -1 && hitCollider.gameObject.layer == playerHitboxLayer) ||
+               hitCollider.name == "PlayerCollider";
+    }
+
+    private static bool TryGetHittable(Collider hitCollider, out IHittable hittable)
+    {
+        if (hitCollider.TryGetComponent(out hittable))
         {
             return true;
         }
 
-        hittable = hit.GetComponentInParent<IHittable>();
+        hittable = hitCollider.GetComponentInParent<IHittable>();
         return hittable != null;
     }
 }

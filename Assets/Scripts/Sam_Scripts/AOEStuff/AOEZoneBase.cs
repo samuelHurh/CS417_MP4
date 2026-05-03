@@ -60,12 +60,15 @@ public abstract class AOEZoneBase : MonoBehaviour
 
     private void ApplyRadiusToComponents()
     {
-        SphereCollider sphereCollider = GetComponent<SphereCollider>();
-
-        if (sphereCollider != null)
+        Collider[] colliders = GetComponentsInChildren<Collider>(true);
+        foreach (Collider collider in colliders)
         {
-            sphereCollider.isTrigger = true;
-            sphereCollider.radius = radius;
+            collider.isTrigger = true;
+
+            if (collider is SphereCollider sphereCollider)
+            {
+                sphereCollider.radius = radius;
+            }
         }
 
         if (radiusVisual != null)
