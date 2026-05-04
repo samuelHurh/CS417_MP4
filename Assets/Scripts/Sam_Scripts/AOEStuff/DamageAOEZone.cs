@@ -31,13 +31,17 @@ public class DamageAOEZone : AOEZoneBase
 
     public IEnumerator Tick()
     {
-        int numTicks = (int)(Duration / damageTickDelay);
+        // Defensive clamp: damageTickDelay = 0 (Inspector default) would cause
+        // Duration / 0 = Infinity → numTicks runaway → tick every frame indefinitely.
+        float effectiveDelay = Mathf.Max(0.5f, damageTickDelay);
+
+        int numTicks = (int)(Duration / effectiveDelay);
         int currTicks = 0;
         while (currTicks < numTicks)
         {
             DamagePlayersTouchingCapsule();
 
-            yield return new WaitForSeconds(damageTickDelay);
+            yield return new WaitForSeconds(effectiveDelay);
             currTicks++;
         }
     }

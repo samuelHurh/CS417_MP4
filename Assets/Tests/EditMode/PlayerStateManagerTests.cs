@@ -129,18 +129,13 @@ namespace JerryScripts.Tests.EditMode
         }
 
         /// <summary>
-        /// Simulates damage by invoking the private <c>OnRigDamageReceived</c> method
-        /// directly. This avoids the need to instantiate a full <see cref="PlayerRig"/>
-        /// (which has complex XR dependencies) for damage-path tests.
+        /// Simulates damage by calling the public <see cref="PlayerStateManager.ApplyDamage"/>
+        /// method directly. Phase 1 removed the rig-event subscription path; this is the
+        /// canonical way to inject damage into PSM now.
         /// </summary>
         private static void SimulateDamage(PlayerStateManager psm, float amount)
         {
-            var method = typeof(PlayerStateManager)
-                .GetMethod("OnRigDamageReceived",
-                    System.Reflection.BindingFlags.Instance |
-                    System.Reflection.BindingFlags.NonPublic);
-            Assert.IsNotNull(method, "PlayerStateManager must have a private OnRigDamageReceived(float) method.");
-            method.Invoke(psm, new object[] { amount });
+            psm.ApplyDamage(amount);
         }
 
         // =====================================================================

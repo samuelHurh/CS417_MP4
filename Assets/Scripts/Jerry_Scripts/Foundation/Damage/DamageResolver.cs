@@ -130,14 +130,14 @@ namespace JerryScripts.Foundation.Damage
         /// a second reference to the SO.
         /// </summary>
         /// <remarks>
-        /// Why this lives on <c>DamageResolver</c> (the concrete class) rather than on
-        /// the <see cref="IDamageResolver"/> interface: adding <c>WeaponRarity</c> to
-        /// the interface would force Foundation to depend on a type that currently
-        /// lives in the Feature layer (<c>JerryScripts.Feature.WeaponHandling</c>).
-        /// Keeping this on the concrete class preserves strict downward layering.
         /// Returns 1.0 (Basic tier) if the rarity table is not assigned.
+        /// (Historical note: this used to live on the concrete class to avoid pulling
+        /// <see cref="WeaponRarity"/> into <see cref="IDamageResolver"/> when the enum
+        /// was in the Feature layer. The enum now lives in <c>Foundation.Damage</c>,
+        /// so adding to the interface would be safe — kept on the concrete class for
+        /// API stability.)
         /// </remarks>
-        public float MultiplierFor(Feature.WeaponHandling.WeaponRarity rarity)
+        public float MultiplierFor(WeaponRarity rarity)
         {
             return _rarityTable != null ? _rarityTable.MultiplierFor(rarity) : 1.0f;
         }

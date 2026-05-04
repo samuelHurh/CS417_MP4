@@ -1,5 +1,6 @@
-using UnityEngine;
+using JerryScripts.Foundation.Damage;
 using JerryScripts.Feature.WeaponHandling;
+using UnityEngine;
 
 namespace JerryScripts.Feature.WeaponGeneration
 {

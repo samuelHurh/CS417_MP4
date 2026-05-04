@@ -350,7 +350,7 @@ MonoBehaviour:
   eyePoint: {fileID: 1604844411433197330}
   lineOfSightMask:
     serializedVersion: 2
-    m_Bits: 891
+    m_Bits: 819
   minDist: 0
   maxDist: 12
   shotInterval: 0.5
@@ -358,7 +358,8 @@ MonoBehaviour:
   maxRepositionRadius: 4
   repositionArrivalDistance: 0.5
   repositionTimeInterval: 2
-  bulletPrefab: {fileID: 3329819582841021477, guid: 6a3dccbcf6b85ac4f8f373ccb4c4d94d, type: 3}
+  bulletPrefab: {fileID: 3329819582841021477, guid: 6a3dccbcf6b85ac4f8f373ccb4c4d94d,
+    type: 3}
   bulletSpawn: {fileID: 3183763854168449250}
   bulletVelocity: 10
 --- !u!1 &7006481806535638980

@@ -1,3 +1,4 @@
+using JerryScripts.Foundation.Damage;
 using UnityEngine;
 
 namespace JerryScripts.Feature.WeaponHandling
@@ -314,19 +315,4 @@ namespace JerryScripts.Feature.WeaponHandling
         SniperRifle
     }
 
-    /// <summary>
-    /// Rarity tier. Maps to a float multiplier in the Damage System formula.
-    /// Multiplier values are owned by the Damage System (<c>RarityMultiplierTable</c>).
-    /// </summary>
-    /// <remarks>
-    /// Matches GDD damage-system.md §Rarity Multiplier Table: four tiers only.
-    /// Canonical multipliers: Basic 1.0, Rare 1.3, Epic 1.7, Legendary 2.2.
-    /// </remarks>
-    public enum WeaponRarity
-    {
-        Basic,
-        Rare,
-        Epic,
-        Legendary
-    }
 }

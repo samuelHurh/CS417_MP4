@@ -1,301 +1,242 @@
 using System;
-using JerryScripts.Foundation;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace JerryScripts.Core.PlayerState
 {
-    /// <summary>
-    /// Runtime MonoBehaviour that owns player health, currency, and
-    /// gameplay-lifecycle state. Implements both <see cref="IPlayerStateReader"/>
-    /// (observable) and <see cref="IPlayerStateWriter"/> (mutating).
-    ///
-    /// <para><b>Wiring:</b> Attach to the <c>_Systems</c> GameObject in the scene.
-    /// Assign a <see cref="PlayerStateConfig"/> asset and drag in the scene's
-    /// <see cref="PlayerRig"/> reference. All consumers should inject either
-    /// <see cref="IPlayerStateReader"/> or <see cref="IPlayerStateWriter"/> via
-    /// the Inspector — never call <c>FindObjectOfType</c>.</para>
-    ///
-    /// <para><b>HP flow:</b> subscribes to <see cref="PlayerRig.OnDamageReceived"/>
-    /// in <c>OnEnable</c> and unsubscribes in <c>OnDisable</c>. The rig event
-    /// carries the already-resolved <c>FinalDamage</c> float; this manager clamps
-    /// the result to <c>[0, MaxHealth]</c> before storing and firing events.</para>
-    ///
-    /// <para><b>Death flow:</b> when <see cref="CurrentHealth"/> reaches zero
-    /// <see cref="OnDeathConfirmed"/> fires first, then <see cref="PlayerRig.Die"/>
-    /// is called on the wired rig, then <see cref="OnStateChanged"/> fires with
-    /// <see cref="PlayerState.Dead"/>.</para>
-    ///
-    /// <para><b>Idempotency:</b> <c>SetHealth</c> does not fire events if the clamped
-    /// value equals the current value (exact <c>==</c> comparison — no arithmetic
-    /// involved in the assignment path).</para>
-    /// </summary>
-    /// <remarks>S2-002. GDD: player-state-management.md.</remarks>
-    [DisallowMultipleComponent]
-    public sealed class PlayerStateManager : MonoBehaviour,
-        IPlayerStateReader,
-        IPlayerStateWriter
-    {
-        // ===================================================================
-        // Inspector fields
-        // ===================================================================
-
-        [Header("Config")]
-        [Tooltip("ScriptableObject with HP cap and starting currency.")]
-        [SerializeField] private PlayerStateConfig _config;
-
-        [Header("Rig Reference")]
-        [Tooltip("The scene PlayerRig. PlayerStateManager subscribes to OnDamageReceived " +
-                 "and calls Die() on death. Assign via Inspector — no Find() at runtime.")]
-        [SerializeField] private PlayerRig _playerRig;
-
-        // ===================================================================
-        // IPlayerStateReader — snapshot properties
-        // ===================================================================
-
-        /// <inheritdoc/>
-        public PlayerState CurrentState { get; private set; } = PlayerState.Running;
-
-        /// <inheritdoc/>
-        public float CurrentHealth { get; private set; }
-
-        /// <inheritdoc/>
-        public float MaxHealth => _config != null ? _config.MaxHealth : 100f;
-
-        /// <inheritdoc/>
-        public int CurrentCurrency { get; private set; }
-
-        // ===================================================================
-        // IPlayerStateReader — events
-        // ===================================================================
-
-        /// <inheritdoc/>
-        public event Action<PlayerState> OnStateChanged;
-
-        /// <inheritdoc/>
-        public event Action<float> OnHealthChanged;
-
-        /// <inheritdoc/>
-        public event Action<int> OnCurrencyChanged;
-
-        /// <inheritdoc/>
-        public event Action OnDeathConfirmed;
-
-        // ===================================================================
-        // Unity lifecycle
-        // ===================================================================
-
-        private void Awake()
-        {
-            if (_config == null)
-                Debug.LogWarning("[PlayerStateManager] No PlayerStateConfig assigned — using defaults (MaxHealth=100, StartingCurrency=0).", this);
-
-            InitializeState();
-        }
-
-        private void OnEnable()
-        {
-            if (_playerRig != null)
-            {
-                _playerRig.OnDamageReceived += OnRigDamageReceived;
-                ((IRigStateProvider)_playerRig).OnStateChanged += OnRigStateChanged;
-            }
-            else
-            {
-                Debug.LogWarning("[PlayerStateManager] PlayerRig reference is null — damage will not reduce HP. Assign via Inspector.", this);
-            }
-        }
-
-        private void OnDisable()
-        {
-            if (_playerRig != null)
-            {
-                _playerRig.OnDamageReceived -= OnRigDamageReceived;
-                ((IRigStateProvider)_playerRig).OnStateChanged -= OnRigStateChanged;
-            }
-        }
-
-        // ===================================================================
-        // IPlayerStateWriter
-        // ===================================================================
-
-        /// <inheritdoc/>
-        public void AddCurrency(int amount)
-        {
-            if (amount <= 0) return; // Negative or zero amounts are silently ignored.
-
-            CurrentCurrency += amount;
-            OnCurrencyChanged?.Invoke(CurrentCurrency);
-        }
-
-        /// <inheritdoc/>
-        public void RequestRestart()
-        {
-            if (CurrentState == PlayerState.Running) return;
-
-            // Unpause the rig before reloading — prevents the paused state from
-            // carrying over into the new scene (Input System action state persists
-            // across scene loads and can re-trigger pause immediately).
-            if (CurrentState == PlayerState.Paused)
-                _playerRig?.TransitionTo(RigState.Active);
-
-            // EditMode tests run with Application.isPlaying == false; SceneManager.LoadScene
-            // is PlayMode-only and throws otherwise. Soft re-init exercises the same
-            // state-reset path Awake runs in a freshly loaded scene.
-            if (!Application.isPlaying)
-            {
-                InitializeState();
-                return;
-            }
-
-            // Full scene reload — resets all GameObjects, pools, and state cleanly.
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-        }
-
-        /// <inheritdoc/>
-        public void RequestResume()
-        {
-            if (CurrentState != PlayerState.Paused) return;
-
-            // Tell the rig to return to Active — this will fire OnRigStateChanged
-            // which transitions PSM back to Running. But we also transition directly
-            // here for immediate UI response.
-            _playerRig?.TransitionTo(RigState.Active);
-            TransitionTo(PlayerState.Running);
-        }
-
-        /// <inheritdoc/>
-        public void RequestQuit()
-        {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
-
-        // ===================================================================
-        // Private — rig state relay (pause/unpause)
-        // ===================================================================
-
         /// <summary>
-        /// Relays <see cref="RigState"/> transitions from <see cref="PlayerRig"/>
-        /// into <see cref="PlayerState"/> transitions. Handles pause toggle and
-        /// resume-after-pause. Death is handled separately via <see cref="TriggerDeath"/>.
-        /// </summary>
-        private void OnRigStateChanged(RigState newRigState)
-        {
-            switch (newRigState)
-            {
-                case RigState.Paused:
-                    if (CurrentState == PlayerState.Running)
-                        TransitionTo(PlayerState.Paused);
-                    break;
-
-                case RigState.Active:
-                    if (CurrentState == PlayerState.Paused)
-                        TransitionTo(PlayerState.Running);
-                    break;
-            }
-        }
-
-        // ===================================================================
-        // Private — damage subscription handler
-        // ===================================================================
-
-        /// <summary>
-        /// Receives the resolved <c>FinalDamage</c> float from <see cref="PlayerRig.OnDamageReceived"/>.
-        /// Applies damage, clamps HP, and triggers death if HP reaches zero.
-        /// No-op when the player is already dead.
-        /// </summary>
-        private void OnRigDamageReceived(float finalDamage)
-        {
-            // Ignore damage after death — prevents double-death from rapid hits.
-            if (CurrentState == PlayerState.Dead) return;
-
-            // Reject NaN — a corrupt damage value must not lock the player into
-            // an undefined HP state. Log once and skip.
-            if (float.IsNaN(finalDamage))
-            {
-                Debug.LogWarning("[PlayerStateManager] Received NaN damage value — ignoring.", this);
-                return;
-            }
-
-            SetHealth(CurrentHealth - finalDamage);
-        }
-
-        // ===================================================================
-        // Private — helpers
-        // ===================================================================
-
-        /// <summary>
-        /// Sets <see cref="CurrentHealth"/> to the clamped value and fires
-        /// <see cref="OnHealthChanged"/> only when the value actually changes.
-        /// Triggers the death sequence when clamped HP == 0.
-        /// </summary>
-        private void SetHealth(float rawValue)
-        {
-            float clamped = Mathf.Clamp(rawValue, 0f, MaxHealth);
-
-            // Exact == is correct here: CurrentHealth is only ever assigned from
-            // Mathf.Clamp or MaxHealth (direct field assignment, no floating-point
-            // arithmetic between reads). The idempotency guard avoids spurious events.
-            if (CurrentHealth == clamped) return;
-
-            CurrentHealth = clamped;
-            OnHealthChanged?.Invoke(CurrentHealth);
-
-            if (CurrentHealth == 0f)
-                TriggerDeath();
-        }
-
-        /// <summary>
-        /// Fires the death sequence: <see cref="OnDeathConfirmed"/>,
-        /// calls <see cref="PlayerRig.Die"/> on the wired rig (null-safe),
-        /// then transitions to <see cref="PlayerState.Dead"/> and fires
-        /// <see cref="OnStateChanged"/>.
-        /// </summary>
-        private void TriggerDeath()
-        {
-            OnDeathConfirmed?.Invoke();
-
-            _playerRig?.Die();
-
-            TransitionTo(PlayerState.Dead);
-        }
-
-        /// <summary>
-        /// Transitions to <paramref name="newState"/> if different from the current
-        /// state. Fires <see cref="OnStateChanged"/> on real transitions only.
-        /// </summary>
-        private void TransitionTo(PlayerState newState)
-        {
-            if (CurrentState == newState) return;
-
-            CurrentState = newState;
-            OnStateChanged?.Invoke(CurrentState);
-        }
-
-        /// <summary>
-        /// Sets HP to <see cref="MaxHealth"/> and currency to the configured starting
-        /// value, then transitions to <see cref="PlayerState.Running"/>.
-        /// Called from <see cref="Awake"/> and <see cref="RequestRestart"/>.
+        /// Runtime MonoBehaviour that owns player health, currency, and
+        /// gameplay-lifecycle state. Implements both <see cref="IPlayerStateReader"/>
+        /// (observable) and <see cref="IPlayerStateWriter"/> (mutating).
         ///
-        /// <para>Events are fired in order: <see cref="OnHealthChanged"/>,
-        /// <see cref="OnCurrencyChanged"/>, <see cref="OnStateChanged"/>.</para>
+        /// <para><b>Wiring:</b> Attach to the <c>_Systems</c> GameObject in the scene.
+        /// Assign a <see cref="PlayerStateConfig"/> asset. All consumers should inject
+        /// either <see cref="IPlayerStateReader"/> or <see cref="IPlayerStateWriter"/> via
+        /// the Inspector — never call <c>FindObjectOfType</c>.</para>
+        ///
+        /// <para><b>HP flow:</b> callers invoke <see cref="ApplyDamage"/> directly
+        /// (e.g. via <c>PlayerHitboxReceiver</c>). This manager clamps the result to
+        /// <c>[0, MaxHealth]</c> before storing and firing events.</para>
+        ///
+        /// <para><b>Death flow:</b> when <see cref="CurrentHealth"/> reaches zero
+        /// <see cref="OnDeathConfirmed"/> fires first, then <see cref="OnStateChanged"/>
+        /// fires with <see cref="PlayerState.Dead"/>.</para>
+        ///
+        /// <para><b>Idempotency:</b> <c>SetHealth</c> does not fire events if the clamped
+        /// value equals the current value (exact <c>==</c> comparison — no arithmetic
+        /// involved in the assignment path).</para>
         /// </summary>
-        private void InitializeState()
+        /// <remarks>S2-002. GDD: player-state-management.md.</remarks>
+        [DisallowMultipleComponent]
+        public sealed class PlayerStateManager : MonoBehaviour,
+                IPlayerStateReader,
+                IPlayerStateWriter
         {
-            // Set HP directly — bypass SetHealth idempotency guard on first init
-            // so OnHealthChanged always fires at startup even if MaxHealth == default(float).
-            CurrentHealth = MaxHealth;
-            OnHealthChanged?.Invoke(CurrentHealth);
+                // ===================================================================
+                // Inspector fields
+                // ===================================================================
 
-            int startCurrency = _config != null ? _config.StartingCurrency : 0;
-            CurrentCurrency = startCurrency;
-            OnCurrencyChanged?.Invoke(CurrentCurrency);
+                [Header("Config")]
+                [Tooltip("ScriptableObject with HP cap and starting currency.")]
+                [SerializeField] private PlayerStateConfig _config;
 
-            TransitionTo(PlayerState.Running);
+                // ===================================================================
+                // IPlayerStateReader — snapshot properties
+                // ===================================================================
+
+                /// <inheritdoc/>
+                public PlayerState CurrentState { get; private set; } = PlayerState.Running;
+
+                /// <inheritdoc/>
+                public float CurrentHealth { get; private set; }
+
+                /// <inheritdoc/>
+                public float MaxHealth => _config != null ? _config.MaxHealth : 100f;
+
+                /// <inheritdoc/>
+                public int CurrentCurrency { get; private set; }
+
+                // ===================================================================
+                // IPlayerStateReader — events
+                // ===================================================================
+
+                /// <inheritdoc/>
+                public event Action<PlayerState> OnStateChanged;
+
+                /// <inheritdoc/>
+                public event Action<float> OnHealthChanged;
+
+                /// <inheritdoc/>
+                public event Action<int> OnCurrencyChanged;
+
+                /// <inheritdoc/>
+                public event Action OnDeathConfirmed;
+
+                // ===================================================================
+                // Unity lifecycle
+                // ===================================================================
+
+                private void Awake()
+                {
+                        Time.timeScale = 1f;
+
+                        if (_config == null)
+                                Debug.LogWarning("[PlayerStateManager] No PlayerStateConfig assigned — using defaults (MaxHealth=100, StartingCurrency=0).", this);
+
+                        InitializeState();
+                }
+
+                // ===================================================================
+                // IPlayerStateWriter
+                // ===================================================================
+
+                /// <inheritdoc/>
+                public void ApplyDamage(float amount)
+                {
+                        if (CurrentState == PlayerState.Dead) return;
+                        if (float.IsNaN(amount))
+                        {
+                                Debug.LogWarning("[PlayerStateManager] ApplyDamage received NaN — ignored.", this);
+                                return;
+                        }
+                        if (amount <= 0f) return;
+
+                        SetHealth(CurrentHealth - amount);
+                }
+
+                /// <inheritdoc/>
+                public void AddCurrency(int amount)
+                {
+                        if (amount <= 0) return; // Negative or zero amounts are silently ignored.
+
+                        CurrentCurrency += amount;
+                        OnCurrencyChanged?.Invoke(CurrentCurrency);
+                }
+
+                /// <inheritdoc/>
+                public void RequestRestart()
+                {
+                        // Always restore time scale before doing anything else — death freezes the world
+                        // via Time.timeScale = 0 (TriggerDeath); restart needs unscaled time to work.
+                        Time.timeScale = 1f;
+
+                        if (CurrentState == PlayerState.Running) return;
+
+                        // EditMode tests run with Application.isPlaying == false; SceneManager.LoadScene
+                        // is PlayMode-only and throws otherwise. Soft re-init exercises the same
+                        // state-reset path Awake runs in a freshly loaded scene.
+                        if (!Application.isPlaying)
+                        {
+                                InitializeState();
+                                return;
+                        }
+
+                        // Full scene reload — resets all GameObjects, pools, and state cleanly.
+                        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                }
+
+                /// <inheritdoc/>
+                public void RequestResume()
+                {
+                        if (CurrentState != PlayerState.Paused) return;
+
+                        TransitionTo(PlayerState.Running);
+                }
+
+                /// <inheritdoc/>
+                public void RequestQuit()
+                {
+                        Time.timeScale = 1f;
+#if UNITY_EDITOR
+                        UnityEditor.EditorApplication.isPlaying = false;
+#else
+                        Application.Quit();
+#endif
+                }
+
+                // ===================================================================
+                // Private — helpers
+                // ===================================================================
+
+                /// <summary>
+                /// Sets <see cref="CurrentHealth"/> to the clamped value and fires
+                /// <see cref="OnHealthChanged"/> only when the value actually changes.
+                /// Triggers the death sequence when clamped HP == 0.
+                /// </summary>
+                private void SetHealth(float rawValue)
+                {
+                        float clamped = Mathf.Clamp(rawValue, 0f, MaxHealth);
+
+                        // Exact == is correct here: CurrentHealth is only ever assigned from
+                        // Mathf.Clamp or MaxHealth (direct field assignment, no floating-point
+                        // arithmetic between reads). The idempotency guard avoids spurious events.
+                        if (CurrentHealth == clamped) return;
+
+                        CurrentHealth = clamped;
+                        OnHealthChanged?.Invoke(CurrentHealth);
+
+                        if (CurrentHealth == 0f)
+                                TriggerDeath();
+                }
+
+                /// <summary>
+                /// Fires the death sequence: <see cref="OnDeathConfirmed"/>, posts
+                /// <see cref="JerryScripts.Foundation.Audio.FeedbackEvent.PlayerDeath"/> audio,
+                /// then transitions to <see cref="PlayerState.Dead"/> and fires
+                /// <see cref="OnStateChanged"/>.
+                /// </summary>
+                private void TriggerDeath()
+                {
+                        OnDeathConfirmed?.Invoke();
+
+                        var audioService = FindAnyObjectByType<JerryScripts.Foundation.Audio.AudioFeedbackService>();
+                        audioService?.PostFeedbackEvent(new JerryScripts.Foundation.Audio.FeedbackEventData(
+                                JerryScripts.Foundation.Audio.FeedbackEvent.PlayerDeath,
+                                transform.position,
+                                0f,
+                                JerryScripts.Foundation.Audio.FeedbackHand.None));
+
+                        TransitionTo(PlayerState.Dead);
+
+                        // Freeze the world — stops enemy AI Update + WaitForSeconds coroutines,
+                        // physics (bullets, AOE ticks), and player movement. Menu input via
+                        // InputActionReference is unaffected (new Input System uses unscaled time).
+                        // Restored to 1.0 in RequestRestart / RequestQuit.
+                        Time.timeScale = 0f;
+                }
+
+                /// <summary>
+                /// Transitions to <paramref name="newState"/> if different from the current
+                /// state. Fires <see cref="OnStateChanged"/> on real transitions only.
+                /// </summary>
+                private void TransitionTo(PlayerState newState)
+                {
+                        if (CurrentState == newState) return;
+
+                        CurrentState = newState;
+                        OnStateChanged?.Invoke(CurrentState);
+                }
+
+                /// <summary>
+                /// Sets HP to <see cref="MaxHealth"/> and currency to the configured starting
+                /// value, then transitions to <see cref="PlayerState.Running"/>.
+                /// Called from <see cref="Awake"/> and <see cref="RequestRestart"/>.
+                ///
+                /// <para>Events are fired in order: <see cref="OnHealthChanged"/>,
+                /// <see cref="OnCurrencyChanged"/>, <see cref="OnStateChanged"/>.</para>
+                /// </summary>
+                private void InitializeState()
+                {
+                        // Set HP directly — bypass SetHealth idempotency guard on first init
+                        // so OnHealthChanged always fires at startup even if MaxHealth == default(float).
+                        CurrentHealth = MaxHealth;
+                        OnHealthChanged?.Invoke(CurrentHealth);
+
+                        int startCurrency = _config != null ? _config.StartingCurrency : 0;
+                        CurrentCurrency = startCurrency;
+                        OnCurrencyChanged?.Invoke(CurrentCurrency);
+
+                        TransitionTo(PlayerState.Running);
+                }
         }
-    }
 }

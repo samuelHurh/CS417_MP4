@@ -1,6 +1,6 @@
 using JerryScripts.Core.PlayerState;
-using JerryScripts.Feature.WeaponHandling;
-using JerryScripts.Foundation;
+using JerryScripts.Foundation.Damage;
+using JerryScripts.Foundation.Player;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -24,7 +24,7 @@ namespace JerryScripts.Presentation.HUD
     /// parented directly below Block A on the same left-controller anchor.
     /// Shows rarity name (rarity color), pistol silhouette icon, and 5 stat bars
     /// (DMG / RPM / MAG / REC / VEL). Visible only when a weapon is held in
-    /// Running state. Refreshed atomically on <see cref="WeaponInstance.OnEquipChanged"/>.
+    /// Running state. Refreshed atomically on <see cref="HUDWeaponBus.OnEquipChanged"/>.
     /// Bar fills use the normalization formulas in weapon-generation.md §Stat-Bar Normalization.
     /// No per-frame recomputation — WeaponData is immutable after generation.</para>
     ///
@@ -49,6 +49,15 @@ namespace JerryScripts.Presentation.HUD
 
         [Header("Dependencies")]
         [SerializeField] private PlayerStateManager _playerStateManager;
+
+        [Header("BNG Rig Wiring")]
+        [Tooltip("Drag the BNG rig's Left Controller Transform here. Block A (running + pause) and Block B " +
+                 "(HUD-06) mount to this. Required — HUD will not build without it.")]
+        [SerializeField] private Transform _leftControllerOverride;
+
+        [Tooltip("Drag the BNG rig's Camera / head Transform here. Pause and Death floating screens parent " +
+                 "to this so they appear at gaze-center. Required — pause/death screens skipped without it.")]
+        [SerializeField] private Transform _headTransform;
 
         [Header("Menu Input — Left Hand (used when paused/dead)")]
         [Tooltip("Trigger action on the left hand — Resume (paused) / Restart (dead).")]
@@ -82,9 +91,9 @@ namespace JerryScripts.Presentation.HUD
 
         private IPlayerStateReader _stateReader;
         private IPlayerStateWriter _stateWriter;
-        private IRigControllerProvider _rigControllerProvider;
-        private PlayerRig _playerRig;
-        private WeaponInstance _weaponInstance;
+
+        // HUD subscribes to HUDWeaponBus static events instead of holding a bridge reference.
+        // The bridge (BNGWeaponBridge) lives in default Assembly-CSharp and publishes here.
 
         // ===================================================================
         // UI — hand display (shared canvas for Running + Paused)
@@ -167,12 +176,6 @@ namespace JerryScripts.Presentation.HUD
                 _stateWriter = _playerStateManager;
             }
 
-            _playerRig = FindAnyObjectByType<PlayerRig>();
-            if (_playerRig != null)
-                _rigControllerProvider = _playerRig;
-
-            _weaponInstance = FindAnyObjectByType<WeaponInstance>();
-
             ResolveSharedValues();
             BuildHandDisplay();
             BuildWeaponPanel();
@@ -189,11 +192,16 @@ namespace JerryScripts.Presentation.HUD
                 _stateReader.OnStateChanged += OnStateChanged;
             }
 
-            if (_weaponInstance != null)
-            {
-                _weaponInstance.OnAmmoChanged += OnAmmoChanged;
-                _weaponInstance.OnEquipChanged += OnEquipChanged;
-            }
+            HUDWeaponBus.OnAmmoChanged  += OnAmmoChanged;
+            HUDWeaponBus.OnEquipChanged += OnBusEquipChanged;
+            HUDWeaponBus.OnStatsChanged += OnBusStatsChanged;
+
+            // Replay last-known state in case the bridge published before HUDSystem was enabled
+            if (HUDWeaponBus.LastAmmoMax > 0)
+                OnAmmoChanged(HUDWeaponBus.LastAmmoCurrent, HUDWeaponBus.LastAmmoMax);
+            OnBusEquipChanged(HUDWeaponBus.LastIsHeld);
+            if (HUDWeaponBus.HasPublishedStats)
+                OnBusStatsChanged(HUDWeaponBus.LastStats);
 
             SubscribeMenuInput();
             SyncToCurrentState();
@@ -208,38 +216,11 @@ namespace JerryScripts.Presentation.HUD
                 _stateReader.OnStateChanged -= OnStateChanged;
             }
 
-            if (_weaponInstance != null)
-            {
-                _weaponInstance.OnAmmoChanged -= OnAmmoChanged;
-                _weaponInstance.OnEquipChanged -= OnEquipChanged;
-            }
+            HUDWeaponBus.OnAmmoChanged  -= OnAmmoChanged;
+            HUDWeaponBus.OnEquipChanged -= OnBusEquipChanged;
+            HUDWeaponBus.OnStatsChanged -= OnBusStatsChanged;
 
             UnsubscribeMenuInput();
-        }
-
-        private void Update()
-        {
-            // Lazy WeaponInstance resolution. If WeaponSpawner.Awake ran AFTER
-            // HUDSystem.Awake (Unity gives no Awake-order guarantee), the initial
-            // FindAnyObjectByType in Awake returned null. Retry here once per frame
-            // until a WeaponInstance exists, subscribe its events, and sync the
-            // HUD to its current state. Once resolved, this method no-ops.
-            if (_weaponInstance != null) return;
-
-            var found = FindAnyObjectByType<WeaponInstance>();
-            if (found == null) return;
-
-            _weaponInstance = found;
-            _weaponInstance.OnAmmoChanged  += OnAmmoChanged;
-            _weaponInstance.OnEquipChanged += OnEquipChanged;
-
-            // Replay the equip-state we missed: HUD-06 Block B + ammo text reflect
-            // the weapon's current held/holstered status, and ammo numbers populate.
-            bool isHeld = _weaponInstance.CurrentState == WeaponInstanceState.Held    ||
-                          _weaponInstance.CurrentState == WeaponInstanceState.Firing  ||
-                          _weaponInstance.CurrentState == WeaponInstanceState.Reloading ||
-                          _weaponInstance.CurrentState == WeaponInstanceState.SlideBack;
-            OnEquipChanged(isHeld);
         }
 
         // ===================================================================
@@ -345,10 +326,33 @@ namespace JerryScripts.Presentation.HUD
 
             if (_healthSegments != null)
             {
-                int filledCount = Mathf.CeilToInt(fillRatio * HealthSegmentCount);
+                // Continuous fractional fill — each segment can be any value between
+                // empty and full. Boundary segment is color-lerped by its fractional part.
+                float segmentsFilled = fillRatio * HealthSegmentCount;
+                int wholeFilled = Mathf.FloorToInt(segmentsFilled);
+                float fractional = segmentsFilled - wholeFilled;
+
                 for (int i = 0; i < _healthSegments.Length; i++)
-                    if (_healthSegments[i] != null)
-                        _healthSegments[i].color = i < filledCount ? _segmentFilledColor : _segmentEmptyColor;
+                {
+                    if (_healthSegments[i] == null) continue;
+
+                    if (i < wholeFilled)
+                    {
+                        // Fully filled
+                        _healthSegments[i].color = _segmentFilledColor;
+                    }
+                    else if (i == wholeFilled && fractional > 0f)
+                    {
+                        // Boundary segment — lerp colors by fractional fill
+                        _healthSegments[i].color = Color.Lerp(
+                            _segmentEmptyColor, _segmentFilledColor, fractional);
+                    }
+                    else
+                    {
+                        // Fully empty
+                        _healthSegments[i].color = _segmentEmptyColor;
+                    }
+                }
             }
 
             if (_healthText != null)
@@ -367,22 +371,26 @@ namespace JerryScripts.Presentation.HUD
                 _ammoText.text = $"{currentAmmo} / {magCapacity}";
         }
 
-        private void OnEquipChanged(bool isEquipped)
+        private void OnBusEquipChanged(bool isEquipped)
         {
             // Block A ammo text
             if (_ammoText != null)
             {
                 _ammoText.gameObject.SetActive(isEquipped);
-                if (isEquipped && _weaponInstance != null)
-                    OnAmmoChanged(_weaponInstance.CurrentAmmo, _weaponInstance.MagCapacity);
             }
 
             // Block B — weapon stat panel (HUD-06)
             if (_weaponBlockB != null)
                 _weaponBlockB.SetActive(isEquipped);
 
-            if (isEquipped && _weaponInstance != null)
-                RefreshWeaponPanel(_weaponInstance.Data);
+            if (isEquipped && HUDWeaponBus.HasPublishedStats)
+                RefreshWeaponPanel(HUDWeaponBus.LastStats);
+        }
+
+        private void OnBusStatsChanged(WeaponStatsSnapshot snapshot)
+        {
+            // Always refresh — keeps the panel in sync if stats change after equip (rare)
+            RefreshWeaponPanel(snapshot);
         }
 
         private void OnStateChanged(PlayerState newState)
@@ -442,9 +450,8 @@ namespace JerryScripts.Presentation.HUD
 
         private void BuildHandDisplay()
         {
-            if (_rigControllerProvider == null) return;
-            Transform leftController = _rigControllerProvider.LeftControllerTransform;
-            if (leftController == null) return;
+            if (_leftControllerOverride == null) return;
+            Transform leftController = _leftControllerOverride;
 
             Vector3 localOffset   = _config != null ? _config.LocalOffset   : new Vector3(0f, 0.08f, -0.05f);
             Vector3 localRotation = _config != null ? _config.LocalRotation : new Vector3(-30f, 0f, 0f);
@@ -484,7 +491,7 @@ namespace JerryScripts.Presentation.HUD
         {
             Color barFillColor = _segmentFilledColor;
 
-            AddText(parent, "HealthLabel", "\u2665", _fontSize, barFillColor, TextAnchor.MiddleCenter,
+            AddText(parent, "HealthLabel", "♥", _fontSize, barFillColor, TextAnchor.MiddleCenter,
                 0f, 0.5f, 0.08f, 1f, _padding, _padding, 0f, -_padding);
 
             GameObject segContainer = CreateChild(parent, "HealthSegments");
@@ -559,9 +566,8 @@ namespace JerryScripts.Presentation.HUD
         /// </summary>
         private void BuildWeaponPanel()
         {
-            if (_rigControllerProvider == null) return;
-            Transform leftController = _rigControllerProvider.LeftControllerTransform;
-            if (leftController == null) return;
+            if (_leftControllerOverride == null) return;
+            Transform leftController = _leftControllerOverride;
 
             float panelWidth   = _config != null ? _config.PanelWidth         : 0.12f;
             float blockBHeight = _config != null ? _config.WeaponPanelHeight  : 0.06f;
@@ -718,37 +724,42 @@ namespace JerryScripts.Presentation.HUD
         }
 
         /// <summary>
-        /// Updates Block B text and bar fills from <paramref name="data"/>.
-        /// Called atomically on equip — <see cref="WeaponData"/> is immutable after
-        /// generation so no per-frame refresh is needed.
+        /// Updates Block B text and bar fills from the <paramref name="snapshot"/>'s generated
+        /// weapon stats. Called atomically on equip; data is set once at weapon Start.
         ///
-        /// <para>Stat-bar normalization formulas (weapon-generation.md §Stat-Bar Normalization):</para>
+        /// <para><b>Stat-bar normalization</b> (sprint-final.md §Stat Mapping):</para>
         /// <list type="bullet">
-        ///   <item>DMG: baseDamage / 58f  (Legendary max)</item>
-        ///   <item>RPM: roundsPerMinute / 330f  (Legendary max)</item>
-        ///   <item>MAG: magCapacity / 20f  (Legendary max)</item>
-        ///   <item>REC: (6.5 - recoilPitch) / 4.0  — inverted: less pitch → fuller bar</item>
-        ///   <item>VEL: bulletSpeed / 230f  (Legendary max)</item>
+        ///   <item>DMG: DamageScale / 2.0  (Sam may currently hardcode to 1.0 → bar at 50%)</item>
+        ///   <item>RPM: hidden — BNG doesn't expose shot interval; bar shows 0 with text "—"</item>
+        ///   <item>MAG: MagazineSize / 30  (Sam may currently hardcode to 0 → bar empty)</item>
+        ///   <item>REC: (1.5 - RecoilIntensityScale) / 1.0  — lower scale = lower recoil = fuller bar</item>
+        ///   <item>VEL: (ProjectileVelocityScale - 0.85) / 0.5</item>
         /// </list>
-        /// All results are clamped to [0, 1] before applying.
-        /// Numeric value text shows raw stat value (integer for DMG/RPM/MAG/VEL,
-        /// 1 decimal for REC).
+        ///
+        /// <para>Rarity color: MaxRarityRoll → 0=Basic, 1=Rare, 2=Epic.</para>
         /// </summary>
-        private void RefreshWeaponPanel(WeaponData data)
+        private void RefreshWeaponPanel(WeaponStatsSnapshot snapshot)
         {
-            if (data == null) return;
+            // Map MaxRarityRoll → WeaponRarity for color
+            WeaponRarity rarity = MapToWeaponRarity(snapshot.MaxRarityRoll);
 
             if (_rarityNameText != null)
             {
-                _rarityNameText.text = data.Rarity.ToString();
-                _rarityNameText.color = GetRarityColor(data.Rarity);
+                _rarityNameText.text = rarity.ToString();
+                _rarityNameText.color = GetRarityColor(rarity);
             }
 
-            _statFillDmg = Mathf.Clamp01(data.BaseDamage      / 58f);
-            _statFillRpm = Mathf.Clamp01(data.RoundsPerMinute / 330f);
-            _statFillMag = Mathf.Clamp01(data.MagCapacity     / 20f);
-            _statFillRec = Mathf.Clamp01((6.5f - data.RecoilPitchBase) / 4.0f);
-            _statFillVel = Mathf.Clamp01(data.BulletSpeed     / 230f);
+            // Cache normalized fill values (used by tests)
+            // Bar formulas use generic 0–2.0 scale ranges (or 0–30 for MAG). Tune later
+            // if Sam's actual stat ranges differ. The previous formulas (e.g. VEL clamped
+            // to (0.85, 1.35)) emptied the bar when scales fell outside that narrow window
+            // — values like 0.5 displayed as "50" but had a 0% bar.
+            _statFillDmg = Mathf.Clamp01(snapshot.DamageScale / 2.0f);
+            _statFillRpm = 0f; // BNG does not expose shot interval — bar empty
+            _statFillMag = snapshot.MagazineSize > 0 ? Mathf.Clamp01(snapshot.MagazineSize / 30f) : 0f;
+            // REC: lower scale = lower recoil = fuller bar. (2.0 - scale) / 2.0 clamped.
+            _statFillRec = Mathf.Clamp01((2.0f - snapshot.RecoilIntensityScale) / 2.0f);
+            _statFillVel = Mathf.Clamp01(snapshot.ProjectileVelocityScale / 2.0f);
 
             ApplySegmentFill(_statBarSegmentsDmg, _statFillDmg);
             ApplySegmentFill(_statBarSegmentsRpm, _statFillRpm);
@@ -756,11 +767,22 @@ namespace JerryScripts.Presentation.HUD
             ApplySegmentFill(_statBarSegmentsRec, _statFillRec);
             ApplySegmentFill(_statBarSegmentsVel, _statFillVel);
 
-            if (_statValueDmg != null) _statValueDmg.text = Mathf.RoundToInt(data.BaseDamage).ToString();
-            if (_statValueRpm != null) _statValueRpm.text = Mathf.RoundToInt(data.RoundsPerMinute).ToString();
-            if (_statValueMag != null) _statValueMag.text = data.MagCapacity.ToString();
-            if (_statValueRec != null) _statValueRec.text = data.RecoilPitchBase.ToString("F1");
-            if (_statValueVel != null) _statValueVel.text = Mathf.RoundToInt(data.BulletSpeed).ToString();
+            if (_statValueDmg != null) _statValueDmg.text = (snapshot.DamageScale * 100f).ToString("F0");
+            if (_statValueRpm != null) _statValueRpm.text = "—";
+            if (_statValueMag != null) _statValueMag.text = snapshot.MagazineSize.ToString();
+            if (_statValueRec != null) _statValueRec.text = snapshot.RecoilIntensityScale.ToString("F2");
+            if (_statValueVel != null) _statValueVel.text = (snapshot.ProjectileVelocityScale * 100f).ToString("F0");
+        }
+
+        private static WeaponRarity MapToWeaponRarity(int maxRarityRoll)
+        {
+            return maxRarityRoll switch
+            {
+                0 => WeaponRarity.Basic,
+                1 => WeaponRarity.Rare,
+                2 => WeaponRarity.Epic,
+                _ => WeaponRarity.Legendary  // fallback; Sam tops at 2 today
+            };
         }
 
         /// <summary>
@@ -801,12 +823,8 @@ namespace JerryScripts.Presentation.HUD
 
         private void BuildPauseScreen()
         {
-            if (_playerRig == null) return;
-            Transform headTransform = null;
-
-            var cam = _playerRig.GetComponentInChildren<Camera>();
-            if (cam != null) headTransform = cam.transform;
-            if (headTransform == null) return;
+            if (_headTransform == null) return;
+            Transform headTransform = _headTransform;
 
             _pauseScreenRoot = new GameObject("PauseScreen_HUD");
             _pauseScreenRoot.transform.SetParent(headTransform, false);
@@ -850,12 +868,8 @@ namespace JerryScripts.Presentation.HUD
 
         private void BuildDeathScreen()
         {
-            if (_playerRig == null) return;
-            Transform headTransform = null;
-
-            var cam = _playerRig.GetComponentInChildren<Camera>();
-            if (cam != null) headTransform = cam.transform;
-            if (headTransform == null) return;
+            if (_headTransform == null) return;
+            Transform headTransform = _headTransform;
 
             _deathScreenRoot = new GameObject("DeathScreen_HUD");
             _deathScreenRoot.transform.SetParent(headTransform, false);
@@ -903,18 +917,10 @@ namespace JerryScripts.Presentation.HUD
                 OnStateChanged(_stateReader.CurrentState);
             }
 
-            if (_weaponInstance != null)
-            {
-                bool isHeld = _weaponInstance.CurrentState == WeaponInstanceState.Held ||
-                              _weaponInstance.CurrentState == WeaponInstanceState.Firing ||
-                              _weaponInstance.CurrentState == WeaponInstanceState.Reloading ||
-                              _weaponInstance.CurrentState == WeaponInstanceState.SlideBack;
-                OnEquipChanged(isHeld);
-            }
-            else if (_ammoText != null)
-            {
-                _ammoText.gameObject.SetActive(false);
-            }
+            // Sync weapon-side state from the static bus
+            OnBusEquipChanged(HUDWeaponBus.LastIsHeld);
+            if (HUDWeaponBus.LastAmmoMax > 0)
+                OnAmmoChanged(HUDWeaponBus.LastAmmoCurrent, HUDWeaponBus.LastAmmoMax);
         }
 
         // ===================================================================
@@ -1003,24 +1009,6 @@ namespace JerryScripts.Presentation.HUD
             return count;
         }
 
-        internal void InjectDependencies(
-            IPlayerStateReader stateReader,
-            IRigControllerProvider rigControllerProvider)
-        {
-            _stateReader = stateReader;
-            _rigControllerProvider = rigControllerProvider;
-
-            // Test seam: if Awake() ran before injection (typical in tests where
-            // AddComponent<HUDSystem>() triggers Awake before InjectDependencies),
-            // build the UI now that dependencies are available. Production path
-            // already built during Awake — null guards short-circuit the rebuild.
-            if (_rigControllerProvider != null && _handDisplayRoot == null)
-            {
-                BuildHandDisplay();
-                BuildWeaponPanel();
-            }
-        }
-
         // ===================================================================
         // HUD-06 test seams
         // ===================================================================
@@ -1037,7 +1025,7 @@ namespace JerryScripts.Presentation.HUD
             _rarityNameText != null ? _rarityNameText.color : Color.clear;
 
         /// <summary>Current normalized [0, 1] fill of the DMG bar.
-        /// Returns -1 if Block B was never built (rig provider was null at Awake).</summary>
+        /// Returns -1 if Block B was never built (left controller override was null at Awake).</summary>
         internal float TestGetBarFillDmg() => _statBarSegmentsDmg != null ? _statFillDmg : -1f;
 
         /// <summary>Current normalized [0, 1] fill of the RPM bar.</summary>
@@ -1063,17 +1051,17 @@ namespace JerryScripts.Presentation.HUD
 
         /// <summary>
         /// Drives <see cref="RefreshWeaponPanel"/> directly from a test-supplied
-        /// <see cref="WeaponData"/> without needing a live <see cref="WeaponInstance"/>.
+        /// <see cref="WeaponStatsSnapshot"/> without needing a live <see cref="BNGWeaponBridge"/>.
         /// Also forces Block B visibility to match <paramref name="isEquipped"/>.
         /// </summary>
-        internal void TestSimulateEquipChanged(bool isEquipped, WeaponData data = null)
+        internal void TestSimulateEquipChanged(bool isEquipped, WeaponStatsSnapshot? snapshot = null)
         {
             if (_weaponBlockB != null)
                 _weaponBlockB.SetActive(isEquipped);
             if (_ammoText != null)
                 _ammoText.gameObject.SetActive(isEquipped);
-            if (isEquipped && data != null)
-                RefreshWeaponPanel(data);
+            if (isEquipped && snapshot.HasValue)
+                RefreshWeaponPanel(snapshot.Value);
         }
     }
 }

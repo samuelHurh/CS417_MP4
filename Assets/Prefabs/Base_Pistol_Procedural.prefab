@@ -4486,7 +4486,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7060412029694503450}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.19641069, y: -0, z: -0, w: 0.98052174}
+  m_LocalRotation: {x: 0.19640824, y: 0, z: 0, w: 0.9805222}
   m_LocalPosition: {x: -0.33986, y: -0.037, z: 0.816}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -4738,7 +4738,7 @@ MonoBehaviour:
   AutoChamberRounds: 1
   MustChamberRounds: 1
   AlwaysFireProjectile: 1
-  FireProjectileInSlowMo: 1
+  FireProjectileInSlowMo: 0
   SlowMoRateOfFire: 0.3
   ShotForce: 20
   BulletCasingForce: 3
@@ -4746,8 +4746,12 @@ MonoBehaviour:
   LaserPoint: {fileID: 0}
   SafetyOn: 0
   RecoilForce: {x: 0, y: 0, z: 0}
+  RotationalRecoilForce: {x: -50, y: 0, z: 0}
   RecoilForceTwoHanded: {x: 0, y: 0, z: 0}
-  RecoilDuration: 0.3
+  RotationalRecoilForceTwoHanded: {x: 0, y: 0, z: 0}
+  RecoilDuration: 0.5
+  RecoilAngularReturnSpring: 500
+  RecoilAngularReturnDamper: 1
   ValidLayers:
     serializedVersion: 2
     m_Bits: 1281
@@ -5063,7 +5067,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae96966a2de006944b21a3b29e85dddd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  rarityTier: 1
+  rarityTier: 0
   Frames:
   - {fileID: 5932691610076903721}
   - {fileID: 7000931043973855191}
@@ -5091,6 +5095,23 @@ MonoBehaviour:
   weaponDamageScale: 1
   magazineSize: 0
   recoilIntensityScale: 1
+  linearRecoilIntensityScale: 1
+  rotationalRecoilIntensityScale: 1
+  recoilReturnTimeScale: 1
+  raycastWeapon: {fileID: 0}
+  recoilGrabbable: {fileID: 0}
+  baseLinearRecoilForce: {x: 0, y: 0, z: 0}
+  baseLinearRecoilForceTwoHanded: {x: 0, y: 0, z: 0}
+  baseRotationalRecoilForce: {x: -40, y: 0, z: 0}
+  baseRotationalRecoilForceTwoHanded: {x: 0, y: 0, z: 0}
+  baseRecoilDuration: 0.5
+  baseRotationalReturnSpring: 500
+  baseRotationalReturnDamper: 1
+  linearRecoilIntensityScaleRange: {x: 1.35, y: 0.75}
+  rotationalRecoilIntensityScaleRange: {x: 1.35, y: 0.75}
+  recoilReturnTimeScaleRange: {x: 1.35, y: 0.75}
+  baseShotForce: 40
+  projectileVelocityScaleRange: {x: 0.5, y: 2.5}
   potentialRGBColorSlide: {fileID: 7225863139590456512}
 --- !u!114 &7225863139590456512
 MonoBehaviour:

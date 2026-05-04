@@ -13,82 +13,53 @@ MonoBehaviour:
   m_Name: FeedbackEventConfig
   m_EditorClassIdentifier: JerryScripts::JerryScripts.Foundation.Audio.FeedbackEventConfig
   _entries:
-  - EventType: 0
-    Clips:
-    - {fileID: 8300000, guid: 7f2b9564a0e826b4083191957e361469, type: 3}
-    - {fileID: 8300000, guid: a1589db30deea21459f8a03aeed5dbc5, type: 3}
-    - {fileID: 8300000, guid: f816de6a0e699c94b8167f45a0b7f9fb, type: 3}
-    MixerGroup: {fileID: -1767244879716619872, guid: d429945277db30945921660d28445840, type: 2}
-    SpatialBlend: 1
-    Volume: 1
-    BasePitch: 1
-    PitchVariance: 0.04
-    HapticAmplitude: 0.8
-    HapticDuration: 0.04
   - EventType: 15
     Clips:
     - {fileID: 8300000, guid: c887311b1923a254cb734af546ffaea1, type: 3}
     - {fileID: 8300000, guid: 62aa5bc6eac0d0f4abd6575e60a03ad3, type: 3}
-    MixerGroup: {fileID: -7300573685191645138, guid: d429945277db30945921660d28445840, type: 2}
+    MixerGroup: {fileID: -7300573685191645138, guid: d429945277db30945921660d28445840,
+      type: 2}
     SpatialBlend: 0
     Volume: 0.8
     BasePitch: 1
     PitchVariance: 0
     HapticAmplitude: 0
     HapticDuration: 0
-  - EventType: 1
-    Clips:
-    - {fileID: 8300000, guid: 91a5b057f5397654dbeae68ffa0dcb0f, type: 3}
-    MixerGroup: {fileID: -2000938079326354775, guid: d429945277db30945921660d28445840, type: 2}
-    SpatialBlend: 0
-    Volume: 0.7
-    BasePitch: 1
-    PitchVariance: 0.08
-    HapticAmplitude: 0.3
-    HapticDuration: 0.02
   - EventType: 8
     Clips:
-    - {fileID: 8300000, guid: 2bc9015602c3fe140a1b9027d1558bb4, type: 3}
     - {fileID: 8300000, guid: 0991413fdb095c845b3e08328d4021c5, type: 3}
-    MixerGroup: {fileID: -944825686676380511, guid: d429945277db30945921660d28445840, type: 2}
+    MixerGroup: {fileID: -944825686676380511, guid: d429945277db30945921660d28445840,
+      type: 2}
     SpatialBlend: 1
     Volume: 0.7
     BasePitch: 1
     PitchVariance: 0.08
     HapticAmplitude: 0.9
     HapticDuration: 0.2
-  - EventType: 2
+  - EventType: 17
     Clips:
-    - {fileID: 8300000, guid: 0ce460f5fc2e80c408b07f6ff5efefb1, type: 3}
-    - {fileID: 8300000, guid: 2d592214ff505bb47a6ba3db1a1791a3, type: 3}
-    - {fileID: 8300000, guid: 50743d06a67e30d44b50b1e8120feb06, type: 3}
-    MixerGroup: {fileID: -2000938079326354775, guid: d429945277db30945921660d28445840, type: 2}
-    SpatialBlend: 1
-    Volume: 1
+    - {fileID: 8300000, guid: 35eadf93f057f114f81dc627708050af, type: 3}
+    - {fileID: 8300000, guid: bc8b1988d30b7c74294e2f49ec1a5ed3, type: 3}
+    - {fileID: 8300000, guid: 0861e643d11f24b4f89593db575a4aab, type: 3}
+    MixerGroup: {fileID: 2910738283359536872, guid: d429945277db30945921660d28445840,
+      type: 2}
+    SpatialBlend: 0
+    Volume: 0.5
     BasePitch: 1
-    PitchVariance: 0.04
+    PitchVariance: 0.06
     HapticAmplitude: 0
     HapticDuration: 0
-  - EventType: 4
+  - EventType: 9
     Clips:
-    - {fileID: 8300000, guid: 333cfc31d8b1532479275d20614b4808, type: 3}
-    MixerGroup: {fileID: -2000938079326354775, guid: d429945277db30945921660d28445840, type: 2}
+    - {fileID: 8300000, guid: e760c151e3306704f9ecd920cdd654d9, type: 3}
+    MixerGroup: {fileID: 2910738283359536872, guid: d429945277db30945921660d28445840,
+      type: 2}
     SpatialBlend: 0
     Volume: 1
     BasePitch: 1
-    PitchVariance: 0.04
-    HapticAmplitude: 0.7
-    HapticDuration: 0.06
-  - EventType: 5
-    Clips:
-    - {fileID: 8300000, guid: a759ef79fe3ae464cb4d241e21cab6ee, type: 3}
-    MixerGroup: {fileID: -2000938079326354775, guid: d429945277db30945921660d28445840, type: 2}
-    SpatialBlend: 0
-    Volume: 1
-    BasePitch: 1
-    PitchVariance: 0.04
-    HapticAmplitude: 0.5
-    HapticDuration: 0.03
+    PitchVariance: 0
+    HapticAmplitude: 0
+    HapticDuration: 0
   _hitConfirmDamageCap: 330
   _hitConfirmPitchFloor: 0.9
   _hitConfirmPitchCeiling: 1.4

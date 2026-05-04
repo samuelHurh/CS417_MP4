@@ -87,6 +87,9 @@ namespace JerryScripts.Foundation.Audio
 
         /// <summary>(Future story) VR tracking restored after a loss.</summary>
         TrackingRestored = 18,
+
+        /// <summary>An enemy was destroyed. Posted by EnemyDeathRewards on Damageable.onDestroyed.</summary>
+        EnemyDeath,
     }
 
     // =========================================================================

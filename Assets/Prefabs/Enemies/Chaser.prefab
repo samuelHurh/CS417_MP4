@@ -12,19 +12,20 @@ GameObject:
   - component: {fileID: 5302197149136317298}
   - component: {fileID: 6827122612289707446}
   - component: {fileID: 9179465218147247646}
-  - component: {fileID: 851371361400450143}
   - component: {fileID: 5735975656935800835}
-  - component: {fileID: 2396378027265286525}
   - component: {fileID: 1949732445117050478}
   - component: {fileID: 721797416657676249}
   - component: {fileID: 8571800964592964897}
-  m_Layer: 0
+  - component: {fileID: 5341149808274031913}
+  - component: {fileID: 4628781646408015880}
+  - component: {fileID: 2760123208149310466}
+  m_Layer: 11
   m_Name: Chaser
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1016252611308506767
 Transform:
   m_ObjectHideFlags: 0
@@ -33,7 +34,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5283674449251753505}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.96128166, z: -0, w: 0.27556777}
+  m_LocalRotation: {x: 0, y: -0.96128094, z: 0, w: 0.27557027}
   m_LocalPosition: {x: 8.566225, y: 1.22, z: 9.761012}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -123,19 +124,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &851371361400450143
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5283674449251753505}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c14f891ace8db63449aae63be83cca3c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ZombieController
-  target: {fileID: 0}
 --- !u!54 &5735975656935800835
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -163,19 +151,6 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
---- !u!114 &2396378027265286525
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5283674449251753505}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 601f7620b756591468fb9820d5a69913, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyDeath
-  zcRef: {fileID: 851371361400450143}
 --- !u!195 &1949732445117050478
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -236,11 +211,76 @@ MonoBehaviour:
   attackRadius: 0
   playerLayerMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 512
   attackDamage: 10
   attackWindup: 0.5
   attackCooldown: 1
   damageSourceId: chaser
+--- !u!114 &5341149808274031913
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5283674449251753505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c6de38f13d6b1443b2c5a5a20ac08d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BNG.Damageable
+  Health: 100
+  SelfDestruct: 0
+  SelfDestructDelay: 0.1
+  SpawnOnDeath: {fileID: 0}
+  ActivateGameObjectsOnDeath: []
+  DeactivateGameObjectsOnDeath: []
+  DeactivateCollidersOnDeath: []
+  DestroyOnDeath: 1
+  DropOnDeath: 1
+  DestroyDelay: 0
+  Respawn: 0
+  RespawnTime: 10
+  RemoveBulletHolesOnDeath: 1
+  onDamaged:
+    m_PersistentCalls:
+      m_Calls: []
+  onDestroyed:
+    m_PersistentCalls:
+      m_Calls: []
+  onRespawn:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &4628781646408015880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5283674449251753505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12b41067b95da9e468972c80a2d6a898, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDeathRewards
+  _gemPrefab: {fileID: 7287766690045032550, guid: 0038d2684459cf34db7a29c8d13da808,
+    type: 3}
+  _gemCount: 3
+  _valuePerGem: 1
+  _postHitConfirmation: 1
+--- !u!114 &2760123208149310466
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5283674449251753505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ed2b481de723ac418b9aaa6cc3bd830, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IFrameOnDamage
+  _duration: 0.1
+  _colliders: []
 --- !u!1 &5779392413667513470
 GameObject:
   m_ObjectHideFlags: 0
@@ -253,7 +293,7 @@ GameObject:
   - component: {fileID: 8528464348009796914}
   - component: {fileID: 2661810932901675540}
   - component: {fileID: 7288759637310203222}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: DisplayState
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -456,7 +496,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3052625271330694218}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: AttackCenter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -490,7 +530,7 @@ GameObject:
   - component: {fileID: 2653603166770855184}
   - component: {fileID: 5735123451322706740}
   - component: {fileID: 2631875714602067577}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: forward_indicator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
