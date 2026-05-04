@@ -951,7 +951,7 @@ MonoBehaviour:
   _prevButtonAnchor: {fileID: 995418712}
   _startReadyText: START
   _startLockedText: LOCKED
-  _gameSceneName: FinalQuestScene_JerryPlayground
+  _gameSceneName: FinalQuestScene
   _labelLocalOffset: {x: 0, y: 0.2, z: 0}
   _labelWorldHeight: 0.15
   _labelFontSize: 64

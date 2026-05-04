@@ -208,8 +208,8 @@ MonoBehaviour:
   maxHealth: 100
   currentHealth: 100
   resumeChaseBuffer: 0.5
-  attackCenter: {fileID: 0}
-  attackRadius: 0
+  attackCenter: {fileID: 3052625271330694218}
+  attackRadius: 2
   playerLayerMask:
     serializedVersion: 2
     m_Bits: 4096

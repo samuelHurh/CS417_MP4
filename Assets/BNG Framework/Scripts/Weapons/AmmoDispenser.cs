@@ -30,6 +30,10 @@ namespace BNG {
         /// </summary>
         public GameObject PistolClip;
 
+        public GameObject ExtendedPistolClip;
+
+        public GameObject SmallerPistolClip;
+
         /// <summary>
         /// Instantiate this if shotgun equipped
         /// </summary>
@@ -93,6 +97,25 @@ namespace BNG {
                 return ShotgunShell;
             }
 
+            // //Auto
+            if (leftGrabberValid && LeftGrabber.HeldGrabbable.transform.tag.Contains("Auto") && CurrentPistolClips > 0) {
+                CurrentPistolClips--;
+                return ExtendedPistolClip;
+            }
+            else if (rightGrabberValid && RightGrabber.HeldGrabbable.transform.tag.Contains("Auto") && CurrentPistolClips > 0) {
+                CurrentPistolClips--;
+                return ExtendedPistolClip;
+            }
+            //starter
+            if (leftGrabberValid && LeftGrabber.HeldGrabbable.transform.tag.Contains("Starter") && CurrentPistolClips > 0) {
+                CurrentPistolClips--;
+                return SmallerPistolClip;
+            }
+            else if (rightGrabberValid && RightGrabber.HeldGrabbable.transform.tag.Contains("Starter") && CurrentPistolClips > 0) {
+                CurrentPistolClips--;
+                return SmallerPistolClip;
+            }
+
             // Rifle
             if (leftGrabberValid && LeftGrabber.HeldGrabbable.transform.name.Contains("Rifle") && CurrentRifleClips > 0) {
                 CurrentRifleClips--;
@@ -104,11 +127,11 @@ namespace BNG {
             }
 
             // Pistol
-            if (leftGrabberValid && LeftGrabber.HeldGrabbable.transform.name.Contains("Pistol") && CurrentPistolClips > 0) {
+            if (leftGrabberValid && LeftGrabber.HeldGrabbable.transform.tag.Contains("Pistol") && CurrentPistolClips > 0) {
                 CurrentPistolClips--;
                 return PistolClip;
             }
-            else if (rightGrabberValid && RightGrabber.HeldGrabbable.transform.name.Contains("Pistol") && CurrentPistolClips > 0) {
+            else if (rightGrabberValid && RightGrabber.HeldGrabbable.transform.tag.Contains("Pistol") && CurrentPistolClips > 0) {
                 CurrentPistolClips--;
                 return PistolClip;
             }

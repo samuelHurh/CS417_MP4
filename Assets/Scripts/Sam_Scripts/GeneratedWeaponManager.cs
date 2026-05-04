@@ -127,7 +127,7 @@ public class GeneratedWeaponManager : MonoBehaviour
             return new GeneratedWeaponPackage(0, 0, 0, 0);
         } else if (isAuto)
         {
-            return new GeneratedWeaponPackage(0,1,0,1);
+            return new GeneratedWeaponPackage(2,1,2,1);
         }
         int budget = RollBudget(tier);
         Debug.Log("Budget: " + budget);

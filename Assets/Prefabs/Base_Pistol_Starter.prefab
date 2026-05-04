@@ -4504,7 +4504,7 @@ GameObject:
   - component: {fileID: 7225863139590456512}
   m_Layer: 10
   m_Name: Base_Pistol_Starter
-  m_TagString: Untagged
+  m_TagString: Starter
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

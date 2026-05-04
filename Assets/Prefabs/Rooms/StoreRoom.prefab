@@ -4768,6 +4768,16 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4507927168388334284}
     m_Modifications:
+    - target: {fileID: 5196883960651273382, guid: a157653a5249b134c91f4e6a347cc551,
+        type: 3}
+      propertyPath: _weaponCost
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196883960651273382, guid: a157653a5249b134c91f4e6a347cc551,
+        type: 3}
+      propertyPath: _healingCost
+      value: 30
+      objectReference: {fileID: 0}
     - target: {fileID: 5380058396577982046, guid: a157653a5249b134c91f4e6a347cc551,
         type: 3}
       propertyPath: m_Name

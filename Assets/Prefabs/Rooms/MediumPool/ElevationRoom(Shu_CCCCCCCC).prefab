@@ -8108,6 +8108,8 @@ MonoBehaviour:
   - {fileID: 5283674449251753505, guid: d9458a64113494648b95ad7648e61499, type: 3}
   - {fileID: 5283674449251753505, guid: d9458a64113494648b95ad7648e61499, type: 3}
   - {fileID: 5283674449251753505, guid: d9458a64113494648b95ad7648e61499, type: 3}
+  thirdWaveSpawns: []
+  thirdWaveEnemies: []
   enemySpawnIndicatorPrefab: {fileID: 0}
   spawnIndicatorDelay: 1.5
   squadManager: {fileID: 0}

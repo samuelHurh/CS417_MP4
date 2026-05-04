@@ -4504,7 +4504,7 @@ GameObject:
   - component: {fileID: 7225863139590456512}
   m_Layer: 10
   m_Name: Base_Pistol_Auto
-  m_TagString: Untagged
+  m_TagString: Auto
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4766,7 +4766,7 @@ MonoBehaviour:
   FiringRate: 0.05
   BulletImpactForce: 1000
   InternalAmmo: 0
-  MaxInternalAmmo: 10
+  MaxInternalAmmo: 40
   AutoChamberRounds: 1
   MustChamberRounds: 1
   AlwaysFireProjectile: 1
@@ -5150,7 +5150,7 @@ MonoBehaviour:
   baseShotForce: 40
   projectileVelocityScaleRange: {x: 0.5, y: 2.5}
   baseWeaponDamage: 25
-  weaponDamageScaleRange: {x: 0.85, y: 1.35}
+  weaponDamageScaleRange: {x: 0.85, y: 3}
   potentialRGBColorSlide: {fileID: 7225863139590456512}
 --- !u!114 &7225863139590456512
 MonoBehaviour:
