@@ -27,7 +27,8 @@ MonoBehaviour:
     HapticDuration: 0
   - EventType: 8
     Clips:
-    - {fileID: 8300000, guid: 0991413fdb095c845b3e08328d4021c5, type: 3}
+    - {fileID: 8300000, guid: cb229251943a2474885c3dc4cf051a30, type: 3}
+    - {fileID: 8300000, guid: 40a022cdc8269ba4caa1855f36a0af5c, type: 3}
     MixerGroup: {fileID: -944825686676380511, guid: d429945277db30945921660d28445840,
       type: 2}
     SpatialBlend: 1
