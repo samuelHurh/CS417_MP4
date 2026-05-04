@@ -12,6 +12,9 @@ public class ShooterRoleBrain : EnemyRoleBrain
     private bool canSeePlayer;
     public float shotInterval = 0.5f;
 
+    private Coroutine _attackingRoutine;
+    private Coroutine _repositionRoutine;
+
     private int maxCandidateChecks = 10;
 
     private Vector3 currMoveTarget;
@@ -69,8 +72,10 @@ public class ShooterRoleBrain : EnemyRoleBrain
             if (canSeePlayer == false)
             {
                 canSeePlayer = true;
-                StartCoroutine(AttackingCoroutine());
-                StartCoroutine(RepositionCoroutine());
+                if (_attackingRoutine == null)
+                    _attackingRoutine = StartCoroutine(AttackingCoroutine());
+                if (_repositionRoutine == null)
+                    _repositionRoutine = StartCoroutine(RepositionCoroutine());
             }
             controller.ChangeActionState(EnemyActionState.Attack);
             controller.StopMoving();
@@ -135,6 +140,7 @@ public class ShooterRoleBrain : EnemyRoleBrain
             yield return new WaitForSeconds(shotInterval);
             Fire();
         }
+        _attackingRoutine = null;
     }
 
     public IEnumerator RepositionCoroutine()
@@ -152,6 +158,7 @@ public class ShooterRoleBrain : EnemyRoleBrain
                 controller.ChangeActionState(EnemyActionState.Reposition);
             }
         }
+        _repositionRoutine = null;
     }
 
     private bool HasReachedRepositionTarget()
