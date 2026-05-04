@@ -16,6 +16,8 @@ public class RoomPrefab : MonoBehaviour
     public float Ydim;
     public float Zdim;
 
+    public Renderer myRenderer;
+
     
     //If the room is a starting room, then this room will have a reference to the XR origin
     //in order to spawn the player in that room
@@ -52,9 +54,19 @@ public class RoomPrefab : MonoBehaviour
     public void setDimensions() {
         //Since my code does not choose/instantiate the prefab upon creating the gameObject housing the Room object type,
         //I should call this function to set the dimensions of the room after instantiating the actual room prefab
-        Xdim = physicalRoom.GetComponent<Renderer>().bounds.size.x;
-        Ydim = physicalRoom.GetComponent<Renderer>().bounds.size.y;
-        Zdim = physicalRoom.GetComponent<Renderer>().bounds.size.z;
+        if (myRenderer == null) {
+            GameObject rendererRoot = physicalRoom != null ? physicalRoom : gameObject;
+            myRenderer = rendererRoot.GetComponentInChildren<Renderer>();
+        }
+
+        if (myRenderer == null) {
+            Debug.LogError("RoomPrefab is missing a renderer reference.", this);
+            return;
+        }
+
+        Xdim = myRenderer.bounds.size.x;
+        Ydim = myRenderer.bounds.size.y;
+        Zdim = myRenderer.bounds.size.z;
     }
 
     

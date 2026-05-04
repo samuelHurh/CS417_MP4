@@ -10,6 +10,7 @@ public class WeaponActionController : MonoBehaviour
 
     [Header("Behavior")]
     [SerializeField, Range(0f, 1f)] private float rackThreshold = 0.8f;
+    [SerializeField, Range(0f, 0.25f)] private float feedClosedThreshold = 0.05f;
     [SerializeField] private float settleEpsilon = 0.001f;
 
     private float currentTravel;
@@ -35,7 +36,7 @@ public class WeaponActionController : MonoBehaviour
         }
 
         currentTravel = GetProjectedTravel();
-        bool isClosed = currentTravel <= settleEpsilon;
+        bool isClosed = currentTravel <= GetClosedTravelThreshold(maxTravel);
         bool crossedRackThreshold = currentTravel + settleEpsilon >= maxTravel * Mathf.Clamp01(rackThreshold);
 
         if (crossedRackThreshold && !thresholdReachedThisCycle)
@@ -88,6 +89,11 @@ public class WeaponActionController : MonoBehaviour
     private float GetMaxTravel()
     {
         return Vector3.Distance(GetForwardLocalPoint(), GetRearLocalPoint());
+    }
+
+    private float GetClosedTravelThreshold(float maxTravel)
+    {
+        return Mathf.Max(settleEpsilon, maxTravel * feedClosedThreshold);
     }
 
     private Vector3 GetForwardLocalPoint()

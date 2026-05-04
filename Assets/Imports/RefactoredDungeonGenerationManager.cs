@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using BNG;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.AI;
@@ -29,6 +31,8 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         public RoomKind kind;
         public RoomDefinition definition;
         public Vector2Int gridPosition;
+        public int graphDistanceFromStart;
+        public int difficultyPool;
         public GameObject instance;
         public readonly List<RoomEdge> edges = new();
     }
@@ -62,6 +66,16 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     [Header("Room Catalog")]
     public List<RoomDefinition> roomDefinitions = new();
 
+    [Header("Dungeon Difficulty")]
+    [Min(0)] public int dungeonLevel;
+    [Min(0)] public int finalDungeonLevel = 2;
+    public int firstDungeonStarterPool = 0;
+    public int firstDungeonEasyPool = 1;
+    public int secondDungeonPool = 2;
+    public int thirdDungeonPool = 3;
+    [Min(0)] public int firstDungeonStarterMaxGraphDistance = 2;
+    public Transform[] dungeonOrigins = Array.Empty<Transform>();
+
     [Header("Dungeon Shape")]
     [Min(3)] public int mainPathRoomCount = 8;
     [Min(0)] public int extraNormalBranchRooms = 5;
@@ -75,9 +89,16 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     public float hallwayBuffer = 20f;
     public LayerMask roomLayerMask;
 
+    [Header("Room NavMesh")]
+    public bool ensureRoomNavMeshSurfaces = true;
+    public bool buildRoomNavMeshesAfterGeneration = true;
+    public LayerMask navMeshLayerMask = ~0;
+
     [Header("Progression")]
     public GameObject keyPickupPrefab;
     public GameObject lockedEndDoorPrefab;
+    public GameObject endDoorSealPrefab;
+    public float nextDungeonTeleportDelay = 3f;
 
     [Header("Enemies")]
     public GameObject[] enemyPrefabs;
@@ -86,6 +107,9 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
     [Header("Player Spawn")]
     public GameObject XROriginRef;
+    public Transform playerTeleportReference;
+    public Transform trackerAnchorReference;
+    public float playerSpawnHeightOffset = 1f;
     public GameObject pistolRef;
     public GameObject magRef;
 
@@ -119,6 +143,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
     public void GenerateDungeon()
     {
+        ApplyOriginForCurrentDungeonLevel();
         ClearDungeon();
         if (!GenerateGraphWithRetries())
         {
@@ -132,6 +157,33 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     public void ResetDungeon()
     {
         GenerateDungeon();
+    }
+
+    public void GenerateDungeonLevel(int level)
+    {
+        dungeonLevel = Mathf.Max(0, level);
+        GenerateDungeon();
+        SpawnPlayer();
+    }
+
+    public void GenerateNextDungeonLevel()
+    {
+        GenerateDungeonLevel(dungeonLevel + 1);
+    }
+
+    public GeneratedWeaponManager.WeaponRarityTier GetWeaponRarityTierForCurrentDungeon()
+    {
+        if (dungeonLevel <= 0)
+        {
+            return GeneratedWeaponManager.WeaponRarityTier.Common;
+        }
+
+        if (dungeonLevel == 1)
+        {
+            return GeneratedWeaponManager.WeaponRarityTier.Rare;
+        }
+
+        return GeneratedWeaponManager.WeaponRarityTier.Epic;
     }
 
     private bool GenerateGraphWithRetries()
@@ -153,7 +205,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
     private bool TryGenerateMainPath()
     {
-        RoomNode current = CreateNode(RoomKind.Start, Vector2Int.zero);
+        RoomNode current = CreateNode(RoomKind.Start, Vector2Int.zero, 0);
         startNode = current;
 
         for (int pathIndex = 1; pathIndex < mainPathRoomCount; pathIndex++)
@@ -168,7 +220,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
             int direction = PickMainPathDirection(current.gridPosition, availableDirections);
             Vector2Int nextPosition = current.gridPosition + GridDirections[direction];
-            RoomNode next = CreateNode(kind, nextPosition);
+            RoomNode next = CreateNode(kind, nextPosition, current.graphDistanceFromStart + 1);
             AddEdge(current, next, direction, kind == RoomKind.End);
             current = next;
         }
@@ -198,7 +250,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
         RoomNode anchor = candidates[UnityEngine.Random.Range(0, candidates.Count)];
         int direction = PickFreeDirection(anchor.gridPosition);
-        keyNode = CreateNode(RoomKind.Key, anchor.gridPosition + GridDirections[direction]);
+        keyNode = CreateNode(RoomKind.Key, anchor.gridPosition + GridDirections[direction], anchor.graphDistanceFromStart + 1);
         AddEdge(anchor, keyNode, direction, false);
         return true;
     }
@@ -228,7 +280,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
         RoomNode anchor = candidates[UnityEngine.Random.Range(0, candidates.Count)];
         int direction = PickFreeDirection(anchor.gridPosition);
-        lootNode = CreateNode(RoomKind.Loot, anchor.gridPosition + GridDirections[direction]);
+        lootNode = CreateNode(RoomKind.Loot, anchor.gridPosition + GridDirections[direction], anchor.graphDistanceFromStart + 1);
         AddEdge(anchor, lootNode, direction, false);
         return true;
     }
@@ -254,7 +306,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
             RoomNode anchor = candidates[UnityEngine.Random.Range(0, candidates.Count)];
             int direction = PickBranchDirection(anchor);
-            RoomNode branch = CreateNode(RoomKind.Normal, anchor.gridPosition + GridDirections[direction]);
+            RoomNode branch = CreateNode(RoomKind.Normal, anchor.gridPosition + GridDirections[direction], anchor.graphDistanceFromStart + 1);
             AddEdge(anchor, branch, direction, false);
         }
     }
@@ -312,14 +364,17 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         }
     }
 
-    private RoomNode CreateNode(RoomKind kind, Vector2Int gridPosition)
+    private RoomNode CreateNode(RoomKind kind, Vector2Int gridPosition, int graphDistanceFromStart)
     {
+        int difficultyPool = GetDifficultyPoolForGraphDistance(graphDistanceFromStart);
         RoomNode node = new()
         {
             id = nodes.Count,
             kind = kind,
-            definition = PickDefinition(kind),
-            gridPosition = gridPosition
+            gridPosition = gridPosition,
+            graphDistanceFromStart = graphDistanceFromStart,
+            difficultyPool = difficultyPool,
+            definition = PickDefinition(kind, difficultyPool)
         };
 
         nodes.Add(node);
@@ -392,6 +447,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         BuildRoomNavMeshes();
         SpawnRoomEnemies();
         SpawnLockedEndDoor();
+        ConfigureProgressionButtons();
     }
 
     private GameObject InstantiateRoom(RoomNode node, Transform baseTransform)
@@ -406,9 +462,20 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         instance.name = node.kind + " Room " + node.id;
 
         RoomPrefab roomPrefab = EnsureRoomPrefab(instance);
+        if (roomPrefab == null)
+        {
+            return instance;
+        }
+
         roomPrefab.physicalRoom = instance;
         roomPrefab.dungeonID = node.id;
         roomPrefab.setDimensions();
+
+        RoomEventManager roomEventManager = instance.GetComponentInChildren<RoomEventManager>(true);
+        if (roomEventManager != null)
+        {
+            roomEventManager.difficultyPool = node.difficultyPool;
+        }
 
         return instance;
     }
@@ -417,6 +484,10 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     {
         RoomPrefab currentRoom = EnsureRoomPrefab(current.instance);
         RoomPrefab neighborRoom = EnsureRoomPrefab(neighbor.instance);
+        if (currentRoom == null || neighborRoom == null)
+        {
+            return;
+        }
 
         int currentEntranceId = edge.EntranceFor(current);
         int neighborEntranceId = edge.EntranceFor(neighbor);
@@ -441,24 +512,32 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     {
         RoomPrefab aRoom = EnsureRoomPrefab(edge.a.instance);
         RoomPrefab bRoom = EnsureRoomPrefab(edge.b.instance);
+        if (aRoom == null || bRoom == null)
+        {
+            return;
+        }
+
         Transform aEntrance = aRoom.potentialEntrances[edge.aEntrance].transform;
         Transform bEntrance = bRoom.potentialEntrances[edge.bEntrance].transform;
 
-        Vector3 delta = bEntrance.position - aEntrance.position;
-        bool alongX = Mathf.Abs(delta.x) > Mathf.Abs(delta.z);
-        float length = alongX ? Mathf.Abs(delta.x) : Mathf.Abs(delta.z);
+        int direction = edge.aEntrance;
+        bool alongX = direction == 1 || direction == 3;
+        float aCenterToEntrance = DistanceFromCenterToEntrance(edge.a.instance.transform, aEntrance);
+        float bCenterToEntrance = DistanceFromCenterToEntrance(edge.b.instance.transform, bEntrance);
+        float centerDistance = alongX
+            ? Mathf.Abs(edge.b.instance.transform.position.x - edge.a.instance.transform.position.x)
+            : Mathf.Abs(edge.b.instance.transform.position.z - edge.a.instance.transform.position.z);
+        float length = centerDistance - aCenterToEntrance - bCenterToEntrance;
 
         if (length <= 0.01f)
         {
             return;
         }
 
-        Vector3 center = (aEntrance.position + bEntrance.position) * 0.5f;
-        Quaternion rotation = Quaternion.identity;
-        if (alongX)
-        {
-            rotation = Quaternion.Euler(0f, 90f, 0f);
-        }
+        Vector3 directionVector = DirectionToVector(direction);
+        Vector3 center = edge.a.instance.transform.position + directionVector * (aCenterToEntrance + length * 0.5f);
+        center.y = edge.a.instance.transform.position.y;
+        Quaternion rotation = alongX ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
 
         GameObject spawnedHallway = Instantiate(hallway, center, rotation);
         spawnedHallway.name = "Loop Hallway " + spawnedHallways.Count;
@@ -489,6 +568,11 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         foreach (RoomNode node in nodes)
         {
             RoomPrefab roomPrefab = EnsureRoomPrefab(node.instance);
+            if (roomPrefab == null)
+            {
+                continue;
+            }
+
             HashSet<int> usedEntrances = new();
 
             foreach (RoomEdge edge in node.edges)
@@ -501,11 +585,25 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
                 usedEntrances.Add(edge.EntranceFor(node));
             }
 
+            if (roomPrefab.potentialEntrances == null)
+            {
+                Debug.LogWarning("RoomPrefab has no potential entrances assigned.", roomPrefab);
+                continue;
+            }
+
             for (int i = 0; i < roomPrefab.potentialEntrances.Length; i++)
             {
-                Entrance entrance = roomPrefab.potentialEntrances[i].GetComponent<Entrance>();
+                GameObject entranceObject = roomPrefab.potentialEntrances[i];
+                if (entranceObject == null)
+                {
+                    Debug.LogWarning("RoomPrefab has a missing potential entrance at index " + i + ".", roomPrefab);
+                    continue;
+                }
+
+                Entrance entrance = FindEntranceComponent(entranceObject);
                 if (entrance == null)
                 {
+                    Debug.LogWarning("Potential entrance " + entranceObject.name + " is missing an Entrance component.", entranceObject);
                     continue;
                 }
 
@@ -513,7 +611,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
                 if (!usedEntrances.Contains(i))
                 {
-                    entrance.InitiateEntrance(roomPrefab.potentialEntrances[i].transform.position);
+                    entrance.InitiateEntrance(entranceObject.transform.position);
                 }
             }
         }
@@ -521,14 +619,42 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
     private void BuildRoomNavMeshes()
     {
+        if (!buildRoomNavMeshesAfterGeneration)
+        {
+            return;
+        }
+
         foreach (RoomNode node in nodes)
         {
+            if (node.instance == null)
+            {
+                continue;
+            }
+
+            if (ensureRoomNavMeshSurfaces)
+            {
+                EnsureRoomNavMeshSurface(node.instance);
+            }
+
             NavMeshSurface[] surfaces = node.instance.GetComponentsInChildren<NavMeshSurface>();
             foreach (NavMeshSurface surface in surfaces)
             {
                 surface.BuildNavMesh();
             }
         }
+    }
+
+    private void EnsureRoomNavMeshSurface(GameObject roomInstance)
+    {
+        NavMeshSurface surface = roomInstance.GetComponent<NavMeshSurface>();
+        if (surface == null)
+        {
+            surface = roomInstance.AddComponent<NavMeshSurface>();
+        }
+
+        surface.collectObjects = CollectObjects.Children;
+        surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+        surface.layerMask = navMeshLayerMask;
     }
 
     private void SpawnRoomEnemies()
@@ -621,7 +747,8 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
     private void SpawnLockedEndDoor()
     {
-        if (lockedEndDoorPrefab == null || endNode == null || endNode.instance == null)
+        GameObject doorPrefab = endDoorSealPrefab != null ? endDoorSealPrefab : lockedEndDoorPrefab;
+        if (doorPrefab == null || endNode == null || endNode.instance == null)
         {
             return;
         }
@@ -634,15 +761,89 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
             }
 
             RoomPrefab endRoomPrefab = EnsureRoomPrefab(endNode.instance);
+            if (endRoomPrefab == null)
+            {
+                return;
+            }
+
             int entranceId = edge.EntranceFor(endNode);
             Transform entrance = endRoomPrefab.potentialEntrances[entranceId].transform;
-            lockedEndDoorInstance = Instantiate(lockedEndDoorPrefab, entrance.position, entrance.rotation);
+            lockedEndDoorInstance = Instantiate(doorPrefab, entrance.position, entrance.rotation);
             if (entranceId % 2 != 0)
             {
                 lockedEndDoorInstance.transform.eulerAngles += new Vector3(0f, 90f, 0f);
             }
 
             return;
+        }
+    }
+
+    private void ConfigureProgressionButtons()
+    {
+        ConfigureKeyRoomButton();
+        ConfigureEndRoomButton();
+    }
+
+    private void ConfigureKeyRoomButton()
+    {
+        if (keyNode?.instance == null)
+        {
+            return;
+        }
+
+        EndRoomCaller caller = keyNode.instance.GetComponentInChildren<EndRoomCaller>(true);
+        if (caller == null)
+        {
+            return;
+        }
+
+        caller.dungeonManager = this;
+        caller.endDoor = lockedEndDoorInstance;
+
+        Button button = caller.GetComponent<Button>();
+        if (button == null)
+        {
+            button = caller.GetComponentInChildren<Button>(true);
+        }
+
+        if (button != null)
+        {
+            button.onButtonDown.AddListener(caller.RemoveEndDoor);
+        }
+    }
+
+    private void ConfigureEndRoomButton()
+    {
+        if (endNode?.instance == null)
+        {
+            return;
+        }
+
+        Transform buttonTransform = FindChildByName(endNode.instance.transform, "ButtonNextLevel");
+        if (buttonTransform == null)
+        {
+            return;
+        }
+
+        NextDungeonButtonCaller caller = buttonTransform.GetComponent<NextDungeonButtonCaller>();
+        if (caller == null)
+        {
+            caller = buttonTransform.gameObject.AddComponent<NextDungeonButtonCaller>();
+        }
+
+        caller.dungeonManager = this;
+        caller.teleportDelay = nextDungeonTeleportDelay;
+
+        Button button = buttonTransform.GetComponent<Button>();
+        if (button == null)
+        {
+            button = buttonTransform.GetComponentInChildren<Button>(true);
+        }
+
+        if (button != null)
+        {
+            button.onButtonDown = new UnityEngine.Events.UnityEvent();
+            button.onButtonDown.AddListener(caller.AdvanceToNextDungeon);
         }
     }
 
@@ -655,6 +856,195 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         }
     }
 
+    public void AdvanceToNextDungeonAfterDelay(float delaySeconds)
+    {
+        float resolvedDelay = Mathf.Max(3f, delaySeconds, nextDungeonTeleportDelay);
+        StartCoroutine(AdvanceToNextDungeonRoutine(resolvedDelay));
+    }
+
+    private IEnumerator AdvanceToNextDungeonRoutine(float delaySeconds)
+    {
+        if (dungeonLevel >= finalDungeonLevel)
+        {
+            Debug.Log("You win");
+            yield break;
+        }
+
+        dungeonLevel++;
+        GenerateDungeon();
+        Vector3 nextStartPosition = GetStartRoomPlayerPosition();
+        Debug.Log("Generated dungeon level " + dungeonLevel + " at origin " + (origin != null ? origin.position.ToString() : "None") + ". Next player start: " + nextStartPosition, this);
+
+        if (delaySeconds > 0f)
+        {
+            yield return new WaitForSecondsRealtime(delaySeconds);
+        }
+
+        TeleportPlayerToPosition(nextStartPosition);
+    }
+
+    public void TeleportPlayerToStartRoom()
+    {
+        if (startNode == null || startNode.instance == null || XROriginRef == null)
+        {
+            return;
+        }
+
+        TeleportPlayerToPosition(GetStartRoomPlayerPosition());
+    }
+
+    public void TeleportPlayerToPosition(Vector3 destination)
+    {
+        if (XROriginRef == null)
+        {
+            return;
+        }
+
+        Transform trackerAnchor = GetTrackerAnchorReference();
+        Vector3 trackerOffset = trackerAnchor != null
+            ? trackerAnchor.position - XROriginRef.transform.position
+            : GetCurrentPlayerWorldPosition() - XROriginRef.transform.position;
+        Vector3 rootDestination = destination - trackerOffset;
+        Vector3 delta = rootDestination - XROriginRef.transform.position;
+        List<Grabbable> heldGrabbables = FindHeldGrabbables();
+
+        CharacterController characterController = XROriginRef.GetComponentInChildren<CharacterController>();
+        if (characterController != null)
+        {
+            characterController.enabled = false;
+        }
+
+        XROriginRef.transform.position = rootDestination;
+
+        if (characterController != null)
+        {
+            characterController.enabled = true;
+        }
+
+        foreach (Grabbable grabbable in heldGrabbables)
+        {
+            MoveHeldGrabbable(grabbable, delta);
+        }
+
+        Debug.Log("Teleported XR origin to " + rootDestination + " so tracker anchor lands at " + destination + ". Offset: " + trackerOffset + ".", this);
+    }
+
+    public Vector3 GetStartRoomPlayerPosition()
+    {
+        Transform startSpawn = FindStartRoomSpawnTransform();
+        if (startSpawn != null)
+        {
+            return startSpawn.position;
+        }
+
+        if (origin != null)
+        {
+
+            return origin.position + Vector3.up * playerSpawnHeightOffset;
+        }
+
+        if (startNode == null || startNode.instance == null)
+        {
+            return Vector3.up * playerSpawnHeightOffset;
+        }
+
+        return startNode.instance.transform.position + Vector3.up * playerSpawnHeightOffset;
+    }
+
+    private Vector3 GetCurrentPlayerWorldPosition()
+    {
+        if (playerTeleportReference != null)
+        {
+            return playerTeleportReference.position;
+        }
+
+        BNGPlayerController playerController = XROriginRef.GetComponentInChildren<BNGPlayerController>();
+        if (playerController != null && playerController.CenterEyeAnchor != null)
+        {
+            Vector3 headPosition = playerController.CenterEyeAnchor.position;
+            return new Vector3(headPosition.x, XROriginRef.transform.position.y, headPosition.z);
+        }
+
+        Camera playerCamera = XROriginRef.GetComponentInChildren<Camera>();
+        if (playerCamera != null)
+        {
+            Vector3 cameraPosition = playerCamera.transform.position;
+            return new Vector3(cameraPosition.x, XROriginRef.transform.position.y, cameraPosition.z);
+        }
+
+        CharacterController characterController = XROriginRef.GetComponentInChildren<CharacterController>();
+        if (characterController != null)
+        {
+            return characterController.transform.position;
+        }
+
+        return XROriginRef.transform.position;
+    }
+
+    private Transform GetTrackerAnchorReference()
+    {
+        if (trackerAnchorReference != null)
+        {
+            return trackerAnchorReference;
+        }
+
+        if (playerTeleportReference != null
+            && playerTeleportReference.name.Replace(" ", string.Empty).Equals("TrackerAnchor", StringComparison.OrdinalIgnoreCase))
+        {
+            return playerTeleportReference;
+        }
+
+        if (XROriginRef == null)
+        {
+            return null;
+        }
+
+        string[] trackerAnchorNames =
+        {
+            "TrackerAnchor",
+            "Tracker Anchor",
+            "trackeranchor"
+        };
+
+        foreach (string trackerAnchorName in trackerAnchorNames)
+        {
+            Transform trackerAnchor = FindChildByName(XROriginRef.transform, trackerAnchorName);
+            if (trackerAnchor != null)
+            {
+                return trackerAnchor;
+            }
+        }
+
+        return null;
+    }
+
+    private Transform FindStartRoomSpawnTransform()
+    {
+        if (startNode == null || startNode.instance == null)
+        {
+            return null;
+        }
+
+        string[] spawnNames =
+        {
+            "PlayerSpawn",
+            "StartSpawn",
+            "StartRoomSpawn",
+            "SpawnPoint"
+        };
+
+        foreach (string spawnName in spawnNames)
+        {
+            Transform spawnTransform = FindChildByName(startNode.instance.transform, spawnName);
+            if (spawnTransform != null)
+            {
+                return spawnTransform;
+            }
+        }
+
+        return null;
+    }
+
     private void SpawnPlayer()
     {
         if (startNode == null || startNode.instance == null || XROriginRef == null)
@@ -662,7 +1052,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
             return;
         }
 
-        XROriginRef.transform.position = startNode.instance.transform.position + Vector3.up;
+        TeleportPlayerToStartRoom();
 
         if (pistolRef != null)
         {
@@ -709,17 +1099,86 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         lockedEndDoorInstance = null;
     }
 
-    private RoomDefinition PickDefinition(RoomKind kind)
+    private static List<Grabbable> FindHeldGrabbables()
+    {
+        List<Grabbable> heldGrabbables = new();
+        Grabbable[] grabbables = FindObjectsByType<Grabbable>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        foreach (Grabbable grabbable in grabbables)
+        {
+            if (grabbable != null && grabbable.BeingHeld)
+            {
+                heldGrabbables.Add(grabbable);
+            }
+        }
+
+        return heldGrabbables;
+    }
+
+    private static void MoveHeldGrabbable(Grabbable grabbable, Vector3 delta)
+    {
+        if (grabbable == null)
+        {
+            return;
+        }
+
+        grabbable.transform.position += delta;
+
+        Rigidbody rigidbody = grabbable.GetComponent<Rigidbody>();
+        if (rigidbody != null)
+        {
+            rigidbody.position += delta;
+        }
+    }
+
+    private static Transform FindChildByName(Transform root, string childName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        if (root.name == childName)
+        {
+            return root;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform result = FindChildByName(root.GetChild(i), childName);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    private RoomDefinition PickDefinition(RoomKind kind, int difficultyPool)
     {
         List<RoomDefinition> candidates = new();
         int totalWeight = 0;
 
         foreach (RoomDefinition definition in roomDefinitions)
         {
-            if (definition.kind == kind && definition.prefab != null)
+            if (definition.kind == kind && definition.prefab != null && PrefabMatchesDifficultyPool(definition.prefab, difficultyPool))
             {
                 candidates.Add(definition);
                 totalWeight += Mathf.Max(1, definition.weight);
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            Debug.LogWarning("No " + kind + " room definitions found for difficulty pool " + difficultyPool + ". Falling back to any pool for this room kind.", this);
+
+            foreach (RoomDefinition definition in roomDefinitions)
+            {
+                if (definition.kind == kind && definition.prefab != null)
+                {
+                    candidates.Add(definition);
+                    totalWeight += Mathf.Max(1, definition.weight);
+                }
             }
         }
 
@@ -739,6 +1198,75 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         }
 
         return candidates[candidates.Count - 1];
+    }
+
+    private void ApplyOriginForCurrentDungeonLevel()
+    {
+        Transform levelOrigin = GetConfiguredOriginForCurrentDungeonLevel();
+        if (levelOrigin != null)
+        {
+            origin = levelOrigin;
+            return;
+        }
+
+        Debug.LogWarning("No dungeon origin found for dungeon level " + dungeonLevel + ". Reusing current origin: " + (origin != null ? origin.name : "None"), this);
+    }
+
+    private Transform GetConfiguredOriginForCurrentDungeonLevel()
+    {
+        if (dungeonOrigins != null && dungeonOrigins.Length > 0)
+        {
+            int originIndex = Mathf.Clamp(dungeonLevel, 0, dungeonOrigins.Length - 1);
+            if (dungeonOrigins[originIndex] != null)
+            {
+                return dungeonOrigins[originIndex];
+            }
+        }
+
+        return FindOriginByCommonName(dungeonLevel);
+    }
+
+    private static Transform FindOriginByCommonName(int level)
+    {
+        string[] names = level <= 0
+            ? new[] { "EasyDungeonOrigin", "DungeonOrigin", "dungeonOrigin" }
+            : level == 1
+                ? new[] { "MediumDungeonOrigin", "DungeonOriginMedium", "Medium Origin" }
+                : new[] { "HardDungeonOrigin", "DungeonOriginHard", "Hard Origin" };
+
+        foreach (string originName in names)
+        {
+            GameObject originObject = GameObject.Find(originName);
+            if (originObject != null)
+            {
+                return originObject.transform;
+            }
+        }
+
+        return null;
+    }
+
+    private int GetDifficultyPoolForGraphDistance(int graphDistanceFromStart)
+    {
+        if (dungeonLevel <= 0)
+        {
+            return graphDistanceFromStart <= firstDungeonStarterMaxGraphDistance
+                ? firstDungeonStarterPool
+                : firstDungeonEasyPool;
+        }
+
+        if (dungeonLevel == 1)
+        {
+            return secondDungeonPool;
+        }
+
+        return thirdDungeonPool;
+    }
+
+    private static bool PrefabMatchesDifficultyPool(GameObject prefab, int difficultyPool)
+    {
+        RoomEventManager roomEventManager = prefab.GetComponentInChildren<RoomEventManager>(true);
+        return roomEventManager != null && roomEventManager.difficultyPool == difficultyPool;
     }
 
     private int GraphDistance(RoomNode from, RoomNode to, bool respectLockedEdges)
@@ -866,6 +1394,11 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
         RoomPrefab fromRoom = EnsureRoomPrefab(from.instance);
         RoomPrefab toRoom = EnsureRoomPrefab(to.instance);
+        if (fromRoom == null || toRoom == null)
+        {
+            return false;
+        }
+
         int toEntrance = OppositeDirection(direction);
 
         if (direction >= fromRoom.potentialEntrances.Length || toEntrance >= toRoom.potentialEntrances.Length)
@@ -876,13 +1409,25 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         Transform fromEntrance = fromRoom.potentialEntrances[direction].transform;
         Transform toEntranceTransform = toRoom.potentialEntrances[toEntrance].transform;
         Vector3 delta = toEntranceTransform.position - fromEntrance.position;
+        float fromCenterToEntrance = DistanceFromCenterToEntrance(from.instance.transform, fromEntrance);
+        float toCenterToEntrance = DistanceFromCenterToEntrance(to.instance.transform, toEntranceTransform);
+        bool alongZ = direction == 0 || direction == 2;
+        float centerDistance = alongZ
+            ? Mathf.Abs(to.instance.transform.position.z - from.instance.transform.position.z)
+            : Mathf.Abs(to.instance.transform.position.x - from.instance.transform.position.x);
+        float hallwayLength = centerDistance - fromCenterToEntrance - toCenterToEntrance;
 
         if (Mathf.Abs(delta.y) > 1.5f)
         {
             return false;
         }
 
-        if (direction == 0 || direction == 2)
+        if (hallwayLength <= 0.1f)
+        {
+            return false;
+        }
+
+        if (alongZ)
         {
             return Mathf.Abs(delta.x) <= 2f && Mathf.Abs(delta.z) > 0.1f;
         }
@@ -974,7 +1519,13 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         RoomPrefab roomPrefab = instance.GetComponent<RoomPrefab>();
         if (roomPrefab == null)
         {
-            roomPrefab = instance.AddComponent<RoomPrefab>();
+            roomPrefab = instance.GetComponentInChildren<RoomPrefab>();
+        }
+
+        if (roomPrefab == null)
+        {
+            Debug.LogError("Room prefab root is missing a RoomPrefab component in itself or its children.", instance);
+            return null;
         }
 
         if (roomPrefab.physicalRoom == null)
@@ -983,6 +1534,17 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         }
 
         return roomPrefab;
+    }
+
+    private static Entrance FindEntranceComponent(GameObject entranceObject)
+    {
+        Entrance entrance = entranceObject.GetComponent<Entrance>();
+        if (entrance == null)
+        {
+            entrance = entranceObject.GetComponentInChildren<Entrance>();
+        }
+
+        return entrance;
     }
 
     private void OnDrawGizmos()

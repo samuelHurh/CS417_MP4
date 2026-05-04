@@ -79,8 +79,8 @@ namespace JerryScripts.Feature.WeaponHandling
         /// <summary>Rounds currently loaded in the magazine (0 to <see cref="WeaponData.MagCapacity"/>).</summary>
         public int CurrentAmmo { get; private set; }
 
-        /// <summary>Magazine capacity from <see cref="WeaponData.MagCapacity"/>. 0 if no data assigned.</summary>
-        public int MagCapacity => _data != null ? _data.MagCapacity : 0;
+        /// <summary>Magazine capacity from generated grip size when present, otherwise <see cref="WeaponData.MagCapacity"/>.</summary>
+        public int MagCapacity => GetEffectiveMagCapacity();
 
         /// <summary>
         /// Fired whenever <see cref="CurrentAmmo"/> changes (fire, reload, init).
@@ -211,7 +211,7 @@ namespace JerryScripts.Feature.WeaponHandling
 
             // Start loaded — GDD §Ammo State
             if (_data != null)
-                CurrentAmmo = _data.MagCapacity;
+                CurrentAmmo = MagCapacity;
 
             OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
 
@@ -488,7 +488,7 @@ namespace JerryScripts.Feature.WeaponHandling
                     ? _rigControllerProvider.LeftControllerTransform
                     : _rigControllerProvider.RightControllerTransform;
 
-                _magSpawnPool.Spawn(offHand, _data.MagSpawnDelay);
+                _magSpawnPool.Spawn(offHand, _data.MagSpawnDelay, MagCapacity);
 
                 // Audio: off-hand magazine materialises (2D, no haptic per GDD row 4). S2-001.
                 _audioService?.PostFeedbackEvent(new FeedbackEventData(
@@ -519,7 +519,7 @@ namespace JerryScripts.Feature.WeaponHandling
                 return;
             }
 
-            CurrentAmmo = _data != null ? _data.MagCapacity : 0;
+            CurrentAmmo = MagCapacity;
             OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
 
             // Re-enable the pistol's magazine mesh (visual: mag is back in the weapon).
@@ -821,8 +821,24 @@ namespace JerryScripts.Feature.WeaponHandling
             // weapon spawns with a full mag per GDD §Ammo State. If Awake already
             // ran with the prefab's baked data, CurrentAmmo holds the OLD MagCapacity
             // and would otherwise stay stale (e.g., baked 12 vs rolled 18).
-            CurrentAmmo = _data.MagCapacity;
+            CurrentAmmo = MagCapacity;
             OnAmmoChanged?.Invoke(CurrentAmmo, MagCapacity);
+        }
+
+        private int GetEffectiveMagCapacity()
+        {
+            Component generatedWeaponManager = GetComponent("GeneratedWeaponManager");
+            if (generatedWeaponManager != null)
+            {
+                System.Type managerType = generatedWeaponManager.GetType();
+                System.Reflection.PropertyInfo capacityProperty = managerType.GetProperty("CurrentMagazineCapacity");
+                if (capacityProperty != null && capacityProperty.GetValue(generatedWeaponManager) is int generatedCapacity)
+                {
+                    return generatedCapacity;
+                }
+            }
+
+            return _data != null ? _data.MagCapacity : 0;
         }
 
         // ===================================================================

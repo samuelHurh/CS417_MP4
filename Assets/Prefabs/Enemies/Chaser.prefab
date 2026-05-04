@@ -212,7 +212,7 @@ MonoBehaviour:
   attackRadius: 0
   playerLayerMask:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: 4096
   attackDamage: 10
   attackWindup: 0.5
   attackCooldown: 1
@@ -321,7 +321,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &920357548927589663
 RectTransform:
   m_ObjectHideFlags: 0

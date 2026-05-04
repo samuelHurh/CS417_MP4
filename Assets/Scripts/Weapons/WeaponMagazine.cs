@@ -20,6 +20,12 @@ public class WeaponMagazine : MonoBehaviour
         CurrentRounds = Mathf.Clamp(rounds, 0, Capacity);
     }
 
+    public void SetCapacity(int newCapacity, bool refill = true)
+    {
+        capacity = Mathf.Max(0, newCapacity);
+        CurrentRounds = refill ? Capacity : Mathf.Clamp(CurrentRounds, 0, Capacity);
+    }
+
     public void Refill()
     {
         CurrentRounds = Capacity;

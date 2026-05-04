@@ -99,30 +99,43 @@ public class RoomData : ScriptableObject
 
     }
     public void SetEntrances() {
-        for (int i = 0; i < prefab.GetComponent<RoomPrefab>().potentialEntrances.Length; i++ ) {
+        RoomPrefab roomPrefab = GetRoomPrefab();
+        if (roomPrefab == null || roomPrefab.potentialEntrances == null) {
+            return;
+        }
+
+        for (int i = 0; i < roomPrefab.potentialEntrances.Length; i++ ) {
             if (!entranceIDs.Contains(i)) {
-                //Fuck man...
-                prefab.GetComponent<RoomPrefab>().potentialEntrances[i].GetComponent<Entrance>()
-                    .InitiateEntrance(prefab.GetComponent<RoomPrefab>().potentialEntrances[i].transform.position);
+                GameObject entranceObject = roomPrefab.potentialEntrances[i];
+                Entrance entrance = GetEntrance(entranceObject);
+                if (entrance != null) {
+                    entrance.InitiateEntrance(entranceObject.transform.position);
+                }
             }
         }
     }
 
     public void ResetEntrances() {
+        RoomPrefab roomPrefab = GetRoomPrefab();
+        if (roomPrefab == null || roomPrefab.potentialEntrances == null) {
+            return;
+        }
+
         //Destroy existing
-        for (int i = 0; i < prefab.GetComponent<RoomPrefab>().potentialEntrances.Length; i++ ) {
-            Entrance toDelete = prefab.GetComponent<RoomPrefab>().potentialEntrances[i].GetComponent<Entrance>();
+        for (int i = 0; i < roomPrefab.potentialEntrances.Length; i++ ) {
+            Entrance toDelete = GetEntrance(roomPrefab.potentialEntrances[i]);
             if (toDelete != null) {
                 toDelete.DeinitiateEntrance();
             }
-            //prefab.GetComponent<RoomPrefab>().potentialEntrances[i].GetComponent<Entrance>().DeinitiateEntrance();
         }
         //Debug.Log("EntranceIDs: " + entranceIDs);
-        for (int j = 0; j < prefab.GetComponent<RoomPrefab>().potentialEntrances.Length; j++ ) {
+        for (int j = 0; j < roomPrefab.potentialEntrances.Length; j++ ) {
             if (!entranceIDs.Contains(j)) {
-                //Fuck man...
-                prefab.GetComponent<RoomPrefab>().potentialEntrances[j].GetComponent<Entrance>()
-                    .InitiateEntrance(prefab.GetComponent<RoomPrefab>().potentialEntrances[j].transform.position);
+                GameObject entranceObject = roomPrefab.potentialEntrances[j];
+                Entrance entrance = GetEntrance(entranceObject);
+                if (entrance != null) {
+                    entrance.InitiateEntrance(entranceObject.transform.position);
+                }
             }
         }
 
@@ -131,12 +144,14 @@ public class RoomData : ScriptableObject
 
     public void Delete() {
         if (prefab != null) {
-            for (int i = 0; i < prefab.GetComponent<RoomPrefab>().potentialEntrances.Length; i++ ) {
-                Entrance toDelete = prefab.GetComponent<RoomPrefab>().potentialEntrances[i].GetComponent<Entrance>();
-                if (toDelete != null) {
-                    toDelete.DeinitiateEntrance();
+            RoomPrefab roomPrefab = GetRoomPrefab();
+            if (roomPrefab != null && roomPrefab.potentialEntrances != null) {
+                for (int i = 0; i < roomPrefab.potentialEntrances.Length; i++ ) {
+                    Entrance toDelete = GetEntrance(roomPrefab.potentialEntrances[i]);
+                    if (toDelete != null) {
+                        toDelete.DeinitiateEntrance();
+                    }
                 }
-                //prefab.GetComponent<RoomPrefab>().potentialEntrances[i].GetComponent<Entrance>().DeinitiateEntrance();
             }
         }
         Destroy(prefab);
@@ -146,5 +161,31 @@ public class RoomData : ScriptableObject
         isSpawned = false;
         dungeonID = -1;
         roomType = -1;
+    }
+
+    private RoomPrefab GetRoomPrefab() {
+        if (prefab == null) {
+            return null;
+        }
+
+        RoomPrefab roomPrefab = prefab.GetComponent<RoomPrefab>();
+        if (roomPrefab == null) {
+            roomPrefab = prefab.GetComponentInChildren<RoomPrefab>();
+        }
+
+        return roomPrefab;
+    }
+
+    private Entrance GetEntrance(GameObject entranceObject) {
+        if (entranceObject == null) {
+            return null;
+        }
+
+        Entrance entrance = entranceObject.GetComponent<Entrance>();
+        if (entrance == null) {
+            entrance = entranceObject.GetComponentInChildren<Entrance>();
+        }
+
+        return entrance;
     }
 }

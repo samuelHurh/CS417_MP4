@@ -63,7 +63,7 @@ namespace BNG {
             if (validCollision) {
 
                 // Can we damage what we hit?
-                Damageable d = collision.gameObject.GetComponent<Damageable>();
+                Damageable d = collision.gameObject.GetComponentInParent<Damageable>();
                 if (d) {
                     d.DealDamage(Damage, collision.GetContact(0).point, collision.GetContact(0).normal, true, gameObject, collision.gameObject);
                 }

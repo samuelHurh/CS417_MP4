@@ -46,7 +46,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 0
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}
 --- !u!1 &6895872211244023908
 GameObject:
@@ -5171,7 +5172,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 1
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}
 --- !u!1 &8501382839138380577
 GameObject:
@@ -5219,7 +5221,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 3
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}
 --- !u!1 &8850298863231040753
 GameObject:
@@ -5267,5 +5270,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 2
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}

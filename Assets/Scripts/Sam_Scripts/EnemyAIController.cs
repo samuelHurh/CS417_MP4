@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.AI;
 using TMPro;
+using System;
 
 public enum EnemyActionState
 {
@@ -34,6 +35,7 @@ public class EnemyAIController : MonoBehaviour
     public EnemyActionState ActionState { get; private set; } = EnemyActionState.Idle;
 
     public bool IsDead { get; private set; }
+    public event Action<EnemyAIController> Died;
 
     [SerializeField] private TextMeshPro stateText;
 
@@ -89,7 +91,7 @@ public class EnemyAIController : MonoBehaviour
     {
         squadManager = manager;
         squadBlackboard = blackboard;
-        //playerTarget = player;
+        playerTarget = player;
 
         if (roleBrain != null)
         {
@@ -208,6 +210,11 @@ public class EnemyAIController : MonoBehaviour
 
     public void MarkDead()
     {
+        if (IsDead)
+        {
+            return;
+        }
+
         IsDead = true;
         ChangeActionState(EnemyActionState.Dead);
         StopMoving();
@@ -216,6 +223,8 @@ public class EnemyAIController : MonoBehaviour
         {
             squadManager.UnregisterEnemy(this);
         }
+
+        Died?.Invoke(this);
     }
 
     private void OnDestroy()

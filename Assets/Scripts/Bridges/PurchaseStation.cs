@@ -21,11 +21,9 @@ using UnityEngine.UI;
 ///         to enable floating price labels.</item>
 /// </list>
 ///
-/// <para><b>Weapon rarity tier (TODO Sam)</b>: the rarity tier passed to
-/// <see cref="GeneratedWeaponManager"/> is currently a hardcoded Inspector field
-/// <see cref="_weaponRarityTier"/>. When Sam's LevelManager exists, replace the
-/// access to that field with a call like <c>LevelManager.Instance.GetCurrentTier()</c>.
-/// The TODO is logged at runtime in <see cref="SpawnWeaponPreview"/> to make it visible.</para>
+/// <para><b>Weapon rarity tier</b>: defaults to the Inspector fallback, but if a
+/// <see cref="RefactoredDungeonGenerationManager"/> exists, the station maps the
+/// current dungeon level to Common / Rare / Epic before the weapon rolls parts.</para>
 ///
 /// <para><b>Asmdef boundary note</b>: lives in default Assembly-CSharp because it
 /// references BNG <see cref="Button"/>, <see cref="Grabbable"/>, and Sam's
@@ -56,10 +54,8 @@ public sealed class PurchaseStation : MonoBehaviour
     [Min(0)]
     [SerializeField] private int _weaponCost = 100;
 
-    [Header("Weapon Rarity (TODO Sam)")]
-    [Tooltip("Hardcoded tier for the generated weapon at this station. " +
-             "WHEN LEVELMANAGER EXISTS: replace reads of this field with LevelManager.GetCurrentTier(). " +
-             "The TODO is also logged at runtime in SpawnWeaponPreview.")]
+    [Header("Weapon Rarity")]
+    [Tooltip("Fallback tier if no RefactoredDungeonGenerationManager exists in the scene.")]
     [SerializeField] private GeneratedWeaponManager.WeaponRarityTier _weaponRarityTier = GeneratedWeaponManager.WeaponRarityTier.Common;
 
     [Header("Price Labels")]
@@ -170,11 +166,7 @@ public sealed class PurchaseStation : MonoBehaviour
         var mgr = _spawnedWeapon.GetComponent<GeneratedWeaponManager>();
         if (mgr != null)
         {
-            mgr.rarityTier = _weaponRarityTier;
-            Debug.Log(
-                $"[PurchaseStation] TODO Sam: replace _weaponRarityTier with " +
-                $"LevelManager.GetCurrentTier(). Currently using: {_weaponRarityTier}",
-                this);
+            mgr.rarityTier = ResolveWeaponRarityTier();
         }
         else
         {
@@ -193,6 +185,17 @@ public sealed class PurchaseStation : MonoBehaviour
         Destroy(staging);
 
         SetItemInteractable(_spawnedWeapon, interactable: false);
+    }
+
+    private GeneratedWeaponManager.WeaponRarityTier ResolveWeaponRarityTier()
+    {
+        RefactoredDungeonGenerationManager dungeonGenerationManager = FindAnyObjectByType<RefactoredDungeonGenerationManager>();
+        if (dungeonGenerationManager == null)
+        {
+            return _weaponRarityTier;
+        }
+
+        return dungeonGenerationManager.GetWeaponRarityTierForCurrentDungeon();
     }
 
     /// <summary>

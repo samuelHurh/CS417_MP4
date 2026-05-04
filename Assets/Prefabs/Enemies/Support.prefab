@@ -220,7 +220,7 @@ MonoBehaviour:
   healAOEPrefab: {fileID: 7190984083637914072, guid: 796ca1327ceec5f468d89f34ace199d2,
     type: 3}
   throwWindup: 0.5
-  minTimeBetweenThrows: 4
+  minTimeBetweenThrows: 6
   repollDelay: 0.1
   lobTravelTime: 0.8
   arcHeightPerMeter: 0.25
@@ -238,7 +238,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c6de38f13d6b1443b2c5a5a20ac08d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BNG.Damageable
-  Health: 500
+  Health: 300
   SelfDestruct: 0
   SelfDestructDelay: 0.1
   SpawnOnDeath: {fileID: 0}
@@ -473,7 +473,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &6692942545595497303
 RectTransform:
   m_ObjectHideFlags: 0

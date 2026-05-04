@@ -1918,7 +1918,7 @@ MonoBehaviour:
   _damageResolver: {fileID: 0}
   _enemyHitboxMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 2048
   _defaultHitscanRange: 100
 --- !u!114 &1907364923
 MonoBehaviour:

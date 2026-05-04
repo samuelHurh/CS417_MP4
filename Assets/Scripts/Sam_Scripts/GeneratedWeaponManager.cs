@@ -4,6 +4,12 @@ using BNG;
 
 public class GeneratedWeaponManager : MonoBehaviour
 {
+
+    public bool isBasic;
+    public Material basicGripMaterial;
+    public Material basicSlideMaterial;
+    public bool isAuto;
+    public Material autoMaterial;
     public enum WeaponRarityTier
     {
         Common,
@@ -62,7 +68,7 @@ public class GeneratedWeaponManager : MonoBehaviour
     [Header("Future Stat Outputs")]
     public float projectileVelocityScale = 1f;
     public float weaponDamageScale = 1f;
-    public int magazineSize = 0;
+    public int magazineSize = 15;
     public float recoilIntensityScale = 1f;
     public float linearRecoilIntensityScale = 1f;
     public float rotationalRecoilIntensityScale = 1f;
@@ -85,8 +91,12 @@ public class GeneratedWeaponManager : MonoBehaviour
     [Header("Projectile Application")]
     [SerializeField] private float baseShotForce = 20f;
     [SerializeField] private Vector2 projectileVelocityScaleRange = new Vector2(0.85f, 1.35f);
+    [SerializeField] private float baseWeaponDamage = 25f;
+    [SerializeField] private Vector2 weaponDamageScaleRange = new Vector2(0.85f, 1.35f);
 
     public RGBMaterial potentialRGBColorSlide;
+    public bool HasCompactGrip => Mathf.Clamp(generatedPackage.gripSize, 0, 1) == 0;
+    public int CurrentMagazineCapacity => HasCompactGrip ? 9 : 15;
 
     //The normal slide and the non-compact grip are the origin transform.
     //Different slide lengths require moving the frame in comparison
@@ -95,7 +105,16 @@ public class GeneratedWeaponManager : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        generatedPackage = GenerateWeaponPackage(rarityTier);
+        if (isBasic)
+        {
+            generatedPackage = GenerateWeaponPackage(rarityTier);
+        }else if (isAuto)
+        {
+            generatedPackage = GenerateWeaponPackage(rarityTier);
+        } else
+        {
+            generatedPackage = GenerateWeaponPackage(rarityTier);
+        }
         ApplyGeneratedPackage(generatedPackage);
         CacheGeneratedStats(generatedPackage);
         ApplyGeneratedStatsToWeapon();
@@ -103,6 +122,13 @@ public class GeneratedWeaponManager : MonoBehaviour
 
     private GeneratedWeaponPackage GenerateWeaponPackage(WeaponRarityTier tier)
     {
+        if (isBasic)
+        {
+            return new GeneratedWeaponPackage(0, 0, 0, 0);
+        } else if (isAuto)
+        {
+            return new GeneratedWeaponPackage(0,1,0,1);
+        }
         int budget = RollBudget(tier);
         Debug.Log("Budget: " + budget);
 
@@ -140,7 +166,7 @@ public class GeneratedWeaponManager : MonoBehaviour
         switch (tier)
         {
             case WeaponRarityTier.Common:
-                return Random.Range(0, 3);
+                return Random.Range(1, 3);
             case WeaponRarityTier.Rare:
                 return Random.Range(3, 5);
             case WeaponRarityTier.Epic:
@@ -173,21 +199,46 @@ public class GeneratedWeaponManager : MonoBehaviour
 
         chosenFrame.SetActive(true);
         chosenSlide.SetActive(true);
-
-        if (slideMaterials.Count > package.slideRarity)
+        if (isBasic)
         {
-            chosenSlide.GetComponent<Renderer>().material = slideMaterials[package.slideRarity];
-        }
+            if (slideMaterials.Count > package.slideRarity)
+            {
+                chosenSlide.GetComponent<Renderer>().material = basicSlideMaterial;
+            }
 
-        if (gripMaterials.Count > package.gripRarity)
+            if (gripMaterials.Count > package.gripRarity)
+            {
+                chosenFrame.GetComponent<Renderer>().material = basicGripMaterial;
+            }
+        } else if (isAuto)
         {
-            chosenFrame.GetComponent<Renderer>().material = gripMaterials[package.gripRarity];
-        }
+            if (slideMaterials.Count > package.slideRarity)
+            {
+                chosenSlide.GetComponent<Renderer>().material = autoMaterial;
+            }
 
-        if (package.slideRarity == 2 && potentialRGBColorSlide != null)
+            if (gripMaterials.Count > package.gripRarity)
+            {
+                chosenFrame.GetComponent<Renderer>().material = autoMaterial;
+            }
+        } else
         {
-            potentialRGBColorSlide.ReceiveSetup(chosenSlide);
+            if (slideMaterials.Count > package.slideRarity)
+            {
+                chosenSlide.GetComponent<Renderer>().material = slideMaterials[package.slideRarity];
+            }
+
+            if (gripMaterials.Count > package.gripRarity)
+            {
+                chosenFrame.GetComponent<Renderer>().material = gripMaterials[package.gripRarity];
+            }
+
+            if (package.slideRarity == 2 && potentialRGBColorSlide != null)
+            {
+                potentialRGBColorSlide.ReceiveSetup(chosenSlide);
+            }
         }
+        
 
         Debug.Log($"Generated weapon package: {package}", this);
     }
@@ -225,11 +276,15 @@ public class GeneratedWeaponManager : MonoBehaviour
     {
         projectileVelocityScale = 1f;
         weaponDamageScale = 1f;
-        magazineSize = 0;
+        magazineSize = package.gripSize == 0 ? 9 : 15;
         projectileVelocityScale = Mathf.Lerp(
             projectileVelocityScaleRange.x,
             projectileVelocityScaleRange.y,
             GetProjectileQuality01(package));
+        weaponDamageScale = Mathf.Lerp(
+            weaponDamageScaleRange.x,
+            weaponDamageScaleRange.y,
+            GetDamageQuality01(package));
 
         float recoilQuality = GetRecoilQuality01(package);
         linearRecoilIntensityScale = Mathf.Lerp(
@@ -265,6 +320,14 @@ public class GeneratedWeaponManager : MonoBehaviour
         return Mathf.Clamp01(projectileScore / 4f);
     }
 
+    private float GetDamageQuality01(GeneratedWeaponPackage package)
+    {
+        int damageScore = Mathf.Clamp(package.slideLength, 0, 2)
+                        + Mathf.Clamp(package.slideRarity, 0, 2);
+
+        return Mathf.Clamp01(damageScore / 4f);
+    }
+
     private void ApplyGeneratedStatsToWeapon()
     {
         if (raycastWeapon == null)
@@ -279,19 +342,126 @@ public class GeneratedWeaponManager : MonoBehaviour
 
         if (raycastWeapon != null)
         {
-            raycastWeapon.ShotForce = baseShotForce * projectileVelocityScale;
-            raycastWeapon.RecoilForce = baseLinearRecoilForce * linearRecoilIntensityScale;
-            raycastWeapon.RecoilForceTwoHanded = baseLinearRecoilForceTwoHanded * linearRecoilIntensityScale;
-            raycastWeapon.RotationalRecoilForce = baseRotationalRecoilForce * rotationalRecoilIntensityScale;
-            raycastWeapon.RotationalRecoilForceTwoHanded = baseRotationalRecoilForceTwoHanded * rotationalRecoilIntensityScale;
-            raycastWeapon.RecoilDuration = baseRecoilDuration * recoilReturnTimeScale;
-            raycastWeapon.RecoilAngularReturnSpring = baseRotationalReturnSpring / Mathf.Max(0.01f, recoilReturnTimeScale);
-            raycastWeapon.RecoilAngularReturnDamper = baseRotationalReturnDamper * recoilReturnTimeScale;
+            if (isBasic)
+            {
+                ApplyGeneratedMuzzlePoint(raycastWeapon);
+                raycastWeapon.ShotForce = baseShotForce * projectileVelocityScale;
+                raycastWeapon.Damage = baseWeaponDamage * weaponDamageScale;
+                raycastWeapon.RecoilForce = baseLinearRecoilForce * linearRecoilIntensityScale * 1.2f;
+                raycastWeapon.RecoilForceTwoHanded = baseLinearRecoilForceTwoHanded * linearRecoilIntensityScale;
+                raycastWeapon.RotationalRecoilForce = baseRotationalRecoilForce * rotationalRecoilIntensityScale * 1.2f;
+                raycastWeapon.RotationalRecoilForceTwoHanded = baseRotationalRecoilForceTwoHanded * rotationalRecoilIntensityScale;
+                raycastWeapon.RecoilDuration = baseRecoilDuration * recoilReturnTimeScale * 1.2f;
+                raycastWeapon.RecoilAngularReturnSpring = baseRotationalReturnSpring / Mathf.Max(0.01f, recoilReturnTimeScale);
+                raycastWeapon.RecoilAngularReturnDamper = baseRotationalReturnDamper * recoilReturnTimeScale;
+                ApplyGeneratedMagazineCapacity(raycastWeapon);
+            } else if (isAuto)
+            {
+                ApplyGeneratedMuzzlePoint(raycastWeapon);
+                raycastWeapon.ShotForce = baseShotForce * projectileVelocityScale;
+                raycastWeapon.Damage = baseWeaponDamage * weaponDamageScale;
+                raycastWeapon.RecoilForce = baseLinearRecoilForce * linearRecoilIntensityScale * 0.5f;
+                raycastWeapon.RecoilForceTwoHanded = baseLinearRecoilForceTwoHanded * linearRecoilIntensityScale;
+                raycastWeapon.RotationalRecoilForce = baseRotationalRecoilForce * rotationalRecoilIntensityScale * 0.5f;
+                raycastWeapon.RotationalRecoilForceTwoHanded = baseRotationalRecoilForceTwoHanded * rotationalRecoilIntensityScale;
+                raycastWeapon.RecoilDuration = baseRecoilDuration * recoilReturnTimeScale* 0.5f;
+                raycastWeapon.RecoilAngularReturnSpring = baseRotationalReturnSpring / Mathf.Max(0.01f, recoilReturnTimeScale);
+                raycastWeapon.RecoilAngularReturnDamper = baseRotationalReturnDamper * recoilReturnTimeScale;
+                raycastWeapon.FiringMethod = FiringType.Automatic;
+                ApplyGeneratedMagazineCapacity(raycastWeapon);
+            } else
+            {
+                ApplyGeneratedMuzzlePoint(raycastWeapon);
+                raycastWeapon.ShotForce = baseShotForce * projectileVelocityScale;
+                raycastWeapon.Damage = baseWeaponDamage * weaponDamageScale;
+                raycastWeapon.RecoilForce = baseLinearRecoilForce * linearRecoilIntensityScale;
+                raycastWeapon.RecoilForceTwoHanded = baseLinearRecoilForceTwoHanded * linearRecoilIntensityScale;
+                raycastWeapon.RotationalRecoilForce = baseRotationalRecoilForce * rotationalRecoilIntensityScale;
+                raycastWeapon.RotationalRecoilForceTwoHanded = baseRotationalRecoilForceTwoHanded * rotationalRecoilIntensityScale;
+                raycastWeapon.RecoilDuration = baseRecoilDuration * recoilReturnTimeScale;
+                raycastWeapon.RecoilAngularReturnSpring = baseRotationalReturnSpring / Mathf.Max(0.01f, recoilReturnTimeScale);
+                raycastWeapon.RecoilAngularReturnDamper = baseRotationalReturnDamper * recoilReturnTimeScale;
+                ApplyGeneratedMagazineCapacity(raycastWeapon);
+            }
+            
         }
 
         if (recoilGrabbable != null)
         {
             recoilGrabbable.CollisionSlerp = baseRotationalReturnSpring / Mathf.Max(0.01f, recoilReturnTimeScale);
         }
+    }
+
+    private void ApplyGeneratedMuzzlePoint(RaycastWeapon weapon)
+    {
+        string muzzleName = Mathf.Clamp(generatedPackage.slideLength, 0, 2) == 2
+            ? "MuzzlePoint_Long"
+            : "MuzzlePoint";
+
+        Transform muzzlePoint = FindChildByName(transform, muzzleName);
+        if (muzzlePoint != null)
+        {
+            weapon.MuzzlePointTransform = muzzlePoint;
+        }
+    }
+
+    private static Transform FindChildByName(Transform root, string childName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        if (root.name == childName)
+        {
+            return root;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform result = FindChildByName(root.GetChild(i), childName);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    private void ApplyGeneratedMagazineCapacity(RaycastWeapon weapon)
+    {
+        int capacity = CurrentMagazineCapacity;
+        magazineSize = capacity;
+
+        if (weapon.ReloadMethod == ReloadType.InternalAmmo)
+        {
+            weapon.MaxInternalAmmo = capacity;
+            weapon.InternalAmmo = capacity;
+        }
+
+        BNG.Magazine[] bngMagazines = weapon.GetComponentsInChildren<BNG.Magazine>(true);
+        foreach (BNG.Magazine magazine in bngMagazines)
+        {
+            magazine.MaxBulletCount = capacity;
+            magazine.CurrentBulletCount = GetLoadedMagazineCount(weapon, capacity);
+            magazine.UpdateAllBulletGraphics();
+        }
+
+        WeaponMagazine[] weaponMagazines = weapon.GetComponentsInChildren<WeaponMagazine>(true);
+        foreach (WeaponMagazine magazine in weaponMagazines)
+        {
+            magazine.SetCapacity(capacity);
+        }
+    }
+
+    private int GetLoadedMagazineCount(RaycastWeapon weapon, int capacity)
+    {
+        if (weapon.MustChamberRounds && weapon.BulletInChamber)
+        {
+            return Mathf.Max(0, capacity - 1);
+        }
+
+        return capacity;
     }
 }

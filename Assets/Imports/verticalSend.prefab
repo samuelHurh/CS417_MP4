@@ -77,7 +77,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 0
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}
 --- !u!1 &5140831745069069842
 GameObject:
@@ -4543,6 +4544,7 @@ MonoBehaviour:
   Xdim: 0
   Ydim: 0
   Zdim: 0
+  myRenderer: {fileID: 0}
   XROriginRef: {fileID: 0}
   roomCenter: {fileID: 8325390863265544522}
   maxNeighbors: 4
@@ -4601,7 +4603,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 3
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}
 --- !u!1 &6669127416295719752
 GameObject:
@@ -4649,7 +4652,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 2
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}
 --- !u!1 &8142590755510920272
 GameObject:
@@ -4697,5 +4701,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dir: 1
   isUsed: 0
-  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef, type: 3}
+  entrancePrefab: {fileID: 3183484938246888701, guid: 55b52b8aa64048b44be5dd78a925bbef,
+    type: 3}
   wall: {fileID: 0}

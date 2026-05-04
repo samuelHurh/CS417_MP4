@@ -55,6 +55,9 @@ namespace JerryScripts.Feature.WeaponHandling
         [Range(2, 4)]
         [SerializeField] private int _poolSize = 2;
 
+        [Header("Generated Weapon Capacity")]
+        [SerializeField] private int _fullGripCapacity = 15;
+
         // ===================================================================
         // Private — pool state
         // ===================================================================
@@ -99,6 +102,11 @@ namespace JerryScripts.Feature.WeaponHandling
         /// <param name="delaySeconds">Seconds to wait before the magazine appears (GDD default: 0.2s).</param>
         public void Spawn(Transform attachPoint, float delaySeconds)
         {
+            Spawn(attachPoint, delaySeconds, _fullGripCapacity);
+        }
+
+        public void Spawn(Transform attachPoint, float delaySeconds, int magazineCapacity)
+        {
             if (_pool == null || _pool.Length == 0)
             {
                 Debug.LogWarning(
@@ -118,7 +126,7 @@ namespace JerryScripts.Feature.WeaponHandling
                 return;
             }
 
-            StartCoroutine(SpawnAfterDelay(attachPoint, delaySeconds));
+            StartCoroutine(SpawnAfterDelay(attachPoint, delaySeconds, magazineCapacity));
         }
 
         /// <summary>
@@ -171,7 +179,7 @@ namespace JerryScripts.Feature.WeaponHandling
         // Coroutine — delayed spawn
         // ===================================================================
 
-        private IEnumerator SpawnAfterDelay(Transform attachPoint, float delaySeconds)
+        private IEnumerator SpawnAfterDelay(Transform attachPoint, float delaySeconds, int magazineCapacity)
         {
             if (delaySeconds > 0f)
                 yield return new WaitForSeconds(delaySeconds);
@@ -186,9 +194,35 @@ namespace JerryScripts.Feature.WeaponHandling
             instance.transform.SetParent(attachPoint, worldPositionStays: false);
             instance.transform.localPosition = Vector3.zero;
             instance.transform.localRotation = Quaternion.identity;
+            ApplyMagazineCapacity(instance, magazineCapacity);
             instance.SetActive(true);
 
             ActiveSpawnedMag = instance;
+        }
+
+        private static void ApplyMagazineCapacity(GameObject instance, int magazineCapacity)
+        {
+            Component magazine = instance.GetComponent("WeaponMagazine");
+            if (magazine == null)
+            {
+                Component[] childComponents = instance.GetComponentsInChildren<Component>(true);
+                foreach (Component component in childComponents)
+                {
+                    if (component != null && component.GetType().Name == "WeaponMagazine")
+                    {
+                        magazine = component;
+                        break;
+                    }
+                }
+            }
+
+            if (magazine == null)
+            {
+                return;
+            }
+
+            System.Reflection.MethodInfo setCapacityMethod = magazine.GetType().GetMethod("SetCapacity", new[] { typeof(int), typeof(bool) });
+            setCapacityMethod?.Invoke(magazine, new object[] { magazineCapacity, true });
         }
 
         // ===================================================================

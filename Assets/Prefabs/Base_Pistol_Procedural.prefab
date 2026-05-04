@@ -1504,6 +1504,37 @@ Transform:
   - {fileID: 7403275929374560260}
   m_Father: {fileID: 1938190628184049200}
   m_LocalEulerAnglesHint: {x: 90, y: 90, z: 0}
+--- !u!1 &2392172325746150976
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2992819434426395896}
+  m_Layer: 10
+  m_Name: MuzzlePoint_Long
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2992819434426395896
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2392172325746150976}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.0338, z: 0.188}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3279479745954738276}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2527848737893843181
 GameObject:
   m_ObjectHideFlags: 0
@@ -4496,6 +4527,7 @@ Transform:
   - {fileID: 4441636823228177212}
   - {fileID: 1929350642563095339}
   - {fileID: 1530226212340291558}
+  - {fileID: 2992819434426395896}
   - {fileID: 8507219087159093359}
   - {fileID: 1453210873673617640}
   - {fileID: 3765688065470250895}
@@ -5067,6 +5099,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae96966a2de006944b21a3b29e85dddd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  isBasic: 0
+  basicGripMaterial: {fileID: 0}
+  basicSlideMaterial: {fileID: 0}
+  isAuto: 0
+  autoMaterial: {fileID: 0}
   rarityTier: 0
   Frames:
   - {fileID: 5932691610076903721}
@@ -5112,6 +5149,8 @@ MonoBehaviour:
   recoilReturnTimeScaleRange: {x: 1.35, y: 0.75}
   baseShotForce: 40
   projectileVelocityScaleRange: {x: 0.5, y: 2.5}
+  baseWeaponDamage: 25
+  weaponDamageScaleRange: {x: 0.75, y: 2}
   potentialRGBColorSlide: {fileID: 7225863139590456512}
 --- !u!114 &7225863139590456512
 MonoBehaviour:

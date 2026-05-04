@@ -491,6 +491,10 @@ namespace BNG {
                 projectileRigid.AddForce(muzzleTransform.forward * ShotForce, ForceMode.VelocityChange);
                 
                 Projectile proj = projectile.GetComponent<Projectile>();
+                if (proj) {
+                    proj.Damage = Damage;
+                }
+
                 // Convert back to raycast if Time reverts
                 if (proj && !AlwaysFireProjectile) {
                     proj.MarkAsRaycastBullet();
@@ -709,7 +713,7 @@ namespace BNG {
             }
 
             // Damage if possible
-            Damageable d = hit.collider.GetComponent<Damageable>();
+            Damageable d = hit.collider.GetComponentInParent<Damageable>();
             if (d) {
                 d.DealDamage(Damage, hit.point, hit.normal, true, gameObject, hit.collider.gameObject);
 

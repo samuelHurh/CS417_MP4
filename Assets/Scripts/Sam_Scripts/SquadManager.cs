@@ -31,15 +31,24 @@ public class SquadManager : MonoBehaviour
     private void Awake()
     {
         members.Clear();
+        EnsureBlackboard();
 
+        foreach (EnemyAIController enemy in GetComponentsInChildren<EnemyAIController>(true))
+        {
+            RegisterEnemy(enemy);
+        }
+    }
+
+    public void EnsureBlackboard()
+    {
         if (blackboard == null)
         {
             blackboard = GetComponent<SquadBlackboard>();
         }
 
-        foreach (EnemyAIController enemy in GetComponentsInChildren<EnemyAIController>(true))
+        if (blackboard == null)
         {
-            RegisterEnemy(enemy);
+            blackboard = gameObject.AddComponent<SquadBlackboard>();
         }
     }
 
@@ -63,6 +72,7 @@ public class SquadManager : MonoBehaviour
             return;
         }
 
+        EnsureBlackboard();
         members.Add(new SquadMember(enemy));
         blackboard?.RegisterLivingEnemy(enemy);
         enemy.Initialize(this, blackboard, playerTarget);
