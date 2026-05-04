@@ -170,5 +170,5 @@ MonoBehaviour:
   healTickInterval: 1
   enemyLayerMask:
     serializedVersion: 2
-    m_Bits: 256
+    m_Bits: 2304
   healingTickDelay: 0.5

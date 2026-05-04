@@ -64,6 +64,7 @@ public sealed class EnemyHealthBar : MonoBehaviour
     private GameObject _canvasRoot;
     private Image[] _segments;
     private Camera _mainCamera;
+    private float _lastSeenHealth = -1f;
 
     private void Awake()
     {
@@ -97,6 +98,32 @@ public sealed class EnemyHealthBar : MonoBehaviour
         UpdateSegments(ratio);
     }
 
+    /// <summary>The cached starting Health value, used as the maximum for ratio computation.</summary>
+    public float MaxHealth => _maxHealth;
+
+    /// <summary>
+    /// Adds <paramref name="amount"/> to the underlying <see cref="Damageable.Health"/>,
+    /// clamped to <see cref="MaxHealth"/>. The bar visual updates automatically via the
+    /// per-frame health poll in LateUpdate. Negative or NaN amounts are ignored.
+    /// </summary>
+    public void ApplyHeal(float amount)
+    {
+        if (_damageable == null) return;
+        if (float.IsNaN(amount) || amount <= 0f) return;
+
+        float before = _damageable.Health;
+        float newHealth = Mathf.Min(_maxHealth, before + amount);
+
+        if (Mathf.Approximately(before, newHealth))
+        {
+            // Already at max — no change. Log so we don't think the heal flow is broken.
+            return;
+        }
+
+        _damageable.Health = newHealth;
+        Debug.Log($"[EnemyHealthBar] Healed {gameObject.name} for {amount:F1} ({before:F1} → {newHealth:F1} / {_maxHealth:F1}).", this);
+    }
+
     private void OnDestroyedHandler()
     {
         if (_hideOnDeath && _canvasRoot != null) _canvasRoot.SetActive(false);
@@ -117,6 +144,18 @@ public sealed class EnemyHealthBar : MonoBehaviour
         _canvasRoot.transform.rotation = Quaternion.LookRotation(
             _canvasRoot.transform.position - camT.position,
             Vector3.up);
+
+        // Poll for direct Health changes (heal flow, or any other code that writes
+        // Damageable.Health without firing onDamaged). Damage flow is still handled
+        // by the OnDamaged event subscription — both paths converge here.
+        if (_damageable != null && !Mathf.Approximately(_damageable.Health, _lastSeenHealth))
+        {
+            _lastSeenHealth = _damageable.Health;
+            float ratio = _maxHealth > 0f
+                ? Mathf.Clamp01(_damageable.Health / _maxHealth)
+                : 0f;
+            UpdateSegments(ratio);
+        }
     }
 
     // ==============================================================================

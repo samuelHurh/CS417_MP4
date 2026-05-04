@@ -114,6 +114,37 @@ namespace JerryScripts.Core.PlayerState
                 }
 
                 /// <inheritdoc/>
+                public void ApplyHeal(float amount)
+                {
+                        if (CurrentState == PlayerState.Dead) return;
+                        if (float.IsNaN(amount))
+                        {
+                                Debug.LogWarning("[PlayerStateManager] ApplyHeal received NaN — ignored.", this);
+                                return;
+                        }
+                        if (amount <= 0f) return;
+
+                        float newHealth = Mathf.Min(MaxHealth, CurrentHealth + amount);
+                        if (newHealth == CurrentHealth) return;  // already at max
+
+                        // SetHealth clamps to [0, MaxHealth] and fires OnHealthChanged on any
+                        // actual change — it is not downward-only. Calling it with a higher value
+                        // is the correct path for healing.
+                        SetHealth(newHealth);
+                }
+
+                /// <inheritdoc/>
+                public bool SpendCurrency(int amount)
+                {
+                        if (amount <= 0) return false;
+                        if (CurrentCurrency < amount) return false;
+
+                        CurrentCurrency -= amount;
+                        OnCurrencyChanged?.Invoke(CurrentCurrency);
+                        return true;
+                }
+
+                /// <inheritdoc/>
                 public void RequestRestart()
                 {
                         // Always restore time scale before doing anything else — death freezes the world

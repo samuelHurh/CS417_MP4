@@ -24,33 +24,27 @@ public class HealAOEZone : AOEZoneBase
 
     public IEnumerator Tick()
     {
-        int numTicks = (int)(Duration / healingTickDelay);
+        // Defensive clamp: healingTickDelay = 0 (Inspector default) would cause
+        // Duration / 0 = Infinity → numTicks runaway → tick every frame indefinitely.
+        float effectiveDelay = Mathf.Max(0.5f, healingTickDelay);
+
+        int numTicks = (int)(Duration / effectiveDelay);
         int currTicks = 0;
         while (currTicks < numTicks)
         {
-            if (IsEnemyTouchingHealingCapsule())
-            {
-                Debug.Log("Player touching damage AOE");
-            }
+            HealEnemiesTouchingCapsule();
 
-            yield return new WaitForSeconds(healingTickDelay);
+            yield return new WaitForSeconds(effectiveDelay);
             currTicks++;
         }
     }
 
-    private bool IsEnemyTouchingHealingCapsule()
+    private void HealEnemiesTouchingCapsule()
     {
-        if (myVisual == null)
-        {
-            return false;
-        }
+        if (myVisual == null) return;
 
         CapsuleCollider capsuleCollider = myVisual.GetComponentInChildren<CapsuleCollider>();
-
-        if (capsuleCollider == null)
-        {
-            return false;
-        }
+        if (capsuleCollider == null) return;
 
         Transform capsuleTransform = capsuleCollider.transform;
         Vector3 center = capsuleTransform.TransformPoint(capsuleCollider.center);
@@ -61,9 +55,48 @@ public class HealAOEZone : AOEZoneBase
 
         Vector3 pointA = center + axis * cylinderHalfHeight;
         Vector3 pointB = center - axis * cylinderHalfHeight;
-        Collider[] hits = Physics.OverlapCapsule(pointA, pointB, radius, enemyLayerMask);
 
-        return hits.Length > 0;
+        // Layer-mask fallback: if Inspector left enemyLayerMask = 0 (default for unset
+        // LayerMask), no enemies would ever match. Fall back to the EnemyHitbox layer
+        // if defined; otherwise broaden to all layers so at least we don't silently
+        // drop every heal.
+        int effectiveMask = enemyLayerMask.value;
+        if (effectiveMask == 0)
+        {
+            int enemyHitboxLayer = LayerMask.NameToLayer("EnemyHitbox");
+            effectiveMask = enemyHitboxLayer >= 0
+                ? (1 << enemyHitboxLayer)
+                : Physics.AllLayers;
+        }
+
+        Collider[] hits = Physics.OverlapCapsule(pointA, pointB, radius, effectiveMask);
+
+        // Track healed enemies so a multi-collider enemy is only healed once per tick.
+        var seen = new System.Collections.Generic.HashSet<EnemyHealthBar>();
+        foreach (Collider hit in hits)
+        {
+            // Three-step walk: same GO, ancestors, descendants. Robust against any
+            // reasonable enemy hierarchy (EnemyHealthBar on root, on hitbox child, etc.)
+            EnemyHealthBar bar = hit.GetComponent<EnemyHealthBar>()
+                              ?? hit.GetComponentInParent<EnemyHealthBar>()
+                              ?? hit.GetComponentInChildren<EnemyHealthBar>();
+            if (bar == null) continue;
+            if (!seen.Add(bar)) continue;
+
+            bar.ApplyHeal(healPerTick);
+        }
+
+        // Diagnostic — surface silent failures. Logs only when there are hits but no
+        // EnemyHealthBars were resolved (the most-likely silent-fail case).
+        if (hits.Length > 0 && seen.Count == 0)
+        {
+            Debug.LogWarning(
+                $"[HealAOEZone] OverlapCapsule found {hits.Length} colliders but no " +
+                "EnemyHealthBar component was resolvable from any of them. Check that each " +
+                "enemy prefab has an EnemyHealthBar component on the same GameObject as the " +
+                "collider, or on an ancestor / descendant.",
+                this);
+        }
     }
 
     private static Vector3 GetCapsuleWorldAxis(CapsuleCollider capsuleCollider)
