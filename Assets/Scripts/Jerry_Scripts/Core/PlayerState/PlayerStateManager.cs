@@ -40,6 +40,12 @@ namespace JerryScripts.Core.PlayerState
                 [Tooltip("ScriptableObject with HP cap and starting currency.")]
                 [SerializeField] private PlayerStateConfig _config;
 
+                [Header("Restart Target")]
+                [Tooltip("Scene name to load on RequestRestart. Leave EMPTY to reload the current scene " +
+                         "(legacy behavior). Set to your start-menu scene name (e.g. 'StartMenu') so " +
+                         "death/restart returns the player to the tutorial.")]
+                [SerializeField] private string _restartSceneName = "";
+
                 // ===================================================================
                 // IPlayerStateReader — snapshot properties
                 // ===================================================================
@@ -163,7 +169,10 @@ namespace JerryScripts.Core.PlayerState
                         }
 
                         // Full scene reload — resets all GameObjects, pools, and state cleanly.
-                        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                        string targetScene = string.IsNullOrEmpty(_restartSceneName)
+                                ? SceneManager.GetActiveScene().name
+                                : _restartSceneName;
+                        SceneManager.LoadScene(targetScene);
                 }
 
                 /// <inheritdoc/>

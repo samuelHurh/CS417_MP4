@@ -1,5 +1,6 @@
 using BNG;
 using JerryScripts.Core.PlayerState;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -119,8 +120,8 @@ public sealed class PurchaseStation : MonoBehaviour
     private bool _healingPurchased;
     private bool _weaponPurchased;
 
-    private Text _healingPriceText;
-    private Text _weaponPriceText;
+    private TextMeshProUGUI _healingPriceText;
+    private TextMeshProUGUI _weaponPriceText;
     private GameObject _healingPriceLabel;
     private GameObject _weaponPriceLabel;
     private Camera _cachedCamera;
@@ -227,7 +228,7 @@ public sealed class PurchaseStation : MonoBehaviour
                 _healingButtonAnchor,
                 string.Format(_priceLabelFormat, _healingCost),
                 "PriceLabel_Healing");
-            _healingPriceText = _healingPriceLabel.GetComponentInChildren<Text>();
+            _healingPriceText = _healingPriceLabel.GetComponentInChildren<TextMeshProUGUI>();
         }
 
         if (_weaponButtonAnchor != null)
@@ -236,7 +237,7 @@ public sealed class PurchaseStation : MonoBehaviour
                 _weaponButtonAnchor,
                 string.Format(_priceLabelFormat, _weaponCost),
                 "PriceLabel_Weapon");
-            _weaponPriceText = _weaponPriceLabel.GetComponentInChildren<Text>();
+            _weaponPriceText = _weaponPriceLabel.GetComponentInChildren<TextMeshProUGUI>();
         }
     }
 
@@ -282,20 +283,14 @@ public sealed class PurchaseStation : MonoBehaviour
         GameObject textGO = new GameObject("Text", typeof(RectTransform));
         textGO.transform.SetParent(root.transform, worldPositionStays: false);
 
-        Text t = textGO.AddComponent<Text>();
+        TextMeshProUGUI t = textGO.AddComponent<TextMeshProUGUI>();
         t.text = initialText;
         t.fontSize = _priceLabelFontSize;
         t.color = _priceLabelColor;
-        t.alignment = TextAnchor.MiddleCenter;
-        t.horizontalOverflow = HorizontalWrapMode.Overflow;
-        t.verticalOverflow = VerticalWrapMode.Overflow;
+        t.alignment = TextAlignmentOptions.Center;
+        t.enableWordWrapping = false;
+        t.overflowMode = TextOverflowModes.Overflow;
         t.raycastTarget = false;
-
-        // Built-in font fallback chain (matches HUDSystem)
-        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-        if (font == null) font = Font.CreateDynamicFontFromOSFont("Arial", _priceLabelFontSize);
-        t.font = font;
 
         RectTransform rt = textGO.GetComponent<RectTransform>();
         rt.anchorMin = Vector2.zero;
@@ -325,7 +320,7 @@ public sealed class PurchaseStation : MonoBehaviour
             Vector3.up);
     }
 
-    private void MarkSlotSold(Text priceText)
+    private void MarkSlotSold(TextMeshProUGUI priceText)
     {
         if (priceText == null) return;
         priceText.text = _soldLabelText;
@@ -358,7 +353,7 @@ public sealed class PurchaseStation : MonoBehaviour
             onSuccess: () => _weaponPurchased = true);
     }
 
-    private void TryPurchase(string slotName, int cost, bool isAlreadyPurchased, GameObject spawnedItem, Text priceText, System.Action onSuccess)
+    private void TryPurchase(string slotName, int cost, bool isAlreadyPurchased, GameObject spawnedItem, TextMeshProUGUI priceText, System.Action onSuccess)
     {
         if (isAlreadyPurchased)
         {

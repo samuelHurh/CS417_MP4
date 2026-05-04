@@ -32,6 +32,12 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/FinalQuestScene.unity
     guid: ac0131be492c59e4887d55c43432fdd1
+  - enabled: 1
+    path: Assets/Scenes/StartMenu.unity
+    guid: 909439567ab98fb4c903069956af49b4
+  - enabled: 1
+    path: Assets/Scenes/FinalQuestScene_JerryPlayground.unity
+    guid: 306171f5093b9804186df1310450cebd
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 01f73b8a76190bb42be439c8d28f597c,
       type: 2}

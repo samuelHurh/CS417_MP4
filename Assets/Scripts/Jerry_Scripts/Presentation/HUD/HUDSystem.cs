@@ -1,6 +1,7 @@
 using JerryScripts.Core.PlayerState;
 using JerryScripts.Foundation.Damage;
 using JerryScripts.Foundation.Player;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -106,9 +107,9 @@ namespace JerryScripts.Presentation.HUD
         private GameObject _handDisplayRoot;
         private GameObject _runningPanel;
         private Image[] _healthSegments;
-        private Text _healthText;
-        private Text _currencyText;
-        private Text _ammoText;
+        private TextMeshProUGUI _healthText;
+        private TextMeshProUGUI _currencyText;
+        private TextMeshProUGUI _ammoText;
         private GameObject _pausePanel;
 
         // ===================================================================
@@ -117,7 +118,7 @@ namespace JerryScripts.Presentation.HUD
 
         /// <summary>Root canvas GameObject for Block B. Hidden by default.</summary>
         private GameObject _weaponBlockB;
-        private Text _rarityNameText;
+        private TextMeshProUGUI _rarityNameText;
         private RawImage _pistolSilhouetteImage;
         // HUD-06 stat bars — 5 bars × 10 segments each (matches health-bar style)
         private const int StatBarSegmentCount = 10;
@@ -128,11 +129,11 @@ namespace JerryScripts.Presentation.HUD
         private Image[] _statBarSegmentsVel;
 
         // HUD-06 stat value text (right of each bar)
-        private Text _statValueDmg;
-        private Text _statValueRpm;
-        private Text _statValueMag;
-        private Text _statValueRec;
-        private Text _statValueVel;
+        private TextMeshProUGUI _statValueDmg;
+        private TextMeshProUGUI _statValueRpm;
+        private TextMeshProUGUI _statValueMag;
+        private TextMeshProUGUI _statValueRec;
+        private TextMeshProUGUI _statValueVel;
 
         // Cached normalized fill values [0, 1] per bar — used by test seams.
         private float _statFillDmg;
@@ -158,7 +159,6 @@ namespace JerryScripts.Presentation.HUD
         // Cached
         private Color _segmentFilledColor;
         private Color _segmentEmptyColor;
-        private Font _hudFont;
         private int _fontSize;
         private float _padding;
         private Color _textColor;
@@ -460,11 +460,6 @@ namespace JerryScripts.Presentation.HUD
             _segmentFilledColor = _config != null ? _config.HealthBarFillColor : new Color(0.2f, 0.8f, 0.3f, 1f);
             _segmentEmptyColor  = _config != null ? _config.HealthBarBgColor   : new Color(0.3f, 0.3f, 0.3f, 1f);
 
-            _hudFont = _config != null ? _config.Font : null;
-            if (_hudFont == null) _hudFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            if (_hudFont == null) _hudFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
-            if (_hudFont == null) _hudFont = Font.CreateDynamicFontFromOSFont("Arial", 40);
-
             _fontSize = 52;
             _padding = 16f;
         }
@@ -516,7 +511,7 @@ namespace JerryScripts.Presentation.HUD
         {
             Color barFillColor = _segmentFilledColor;
 
-            AddText(parent, "HealthLabel", "♥", _fontSize, barFillColor, TextAnchor.MiddleCenter,
+            AddText(parent, "HealthLabel", "♥", _fontSize, barFillColor, TextAlignmentOptions.Center,
                 0f, 0.5f, 0.08f, 1f, _padding, _padding, 0f, -_padding);
 
             GameObject segContainer = CreateChild(parent, "HealthSegments");
@@ -544,33 +539,33 @@ namespace JerryScripts.Presentation.HUD
             }
 
             _healthText = AddText(parent, "HealthText", "100", _fontSize, _textColor,
-                TextAnchor.MiddleCenter, 0.80f, 0.5f, 1f, 1f, 0f, _padding, -_padding, -_padding);
+                TextAlignmentOptions.Center, 0.80f, 0.5f, 1f, 1f, 0f, _padding, -_padding, -_padding);
 
             _currencyText = AddText(parent, "CurrencyText", "$ 0", _fontSize, _textColor,
-                TextAnchor.MiddleLeft, 0f, 0f, 0.5f, 0.5f, _padding * 2.5f, _padding, -_padding, -_padding);
+                TextAlignmentOptions.MidlineLeft, 0f, 0f, 0.5f, 0.5f, _padding * 2.5f, _padding, -_padding, -_padding);
 
             _ammoText = AddText(parent, "AmmoText", "-- / --", _fontSize, _textColor,
-                TextAnchor.MiddleRight, 0.5f, 0f, 1f, 0.5f, _padding, _padding, -_padding * 2f, -_padding);
+                TextAlignmentOptions.MidlineRight, 0.5f, 0f, 1f, 0.5f, _padding, _padding, -_padding * 2f, -_padding);
         }
 
         private void BuildPauseContent(GameObject parent)
         {
             // Title — large, centered at top
             AddText(parent, "PauseTitle", "PAUSED", _fontSize + 4, _textColor,
-                TextAnchor.MiddleCenter, 0f, 0.55f, 1f, 1f, _padding, 0f, -_padding, -_padding);
+                TextAlignmentOptions.Center, 0f, 0.55f, 1f, 1f, _padding, 0f, -_padding, -_padding);
 
             // Button prompts — stacked vertically with readable text
             int promptSize = _fontSize - 4;
             Color promptColor = new Color(1f, 1f, 0.95f, 1f);
 
             AddText(parent, "ResumePrompt", "Trigger  RESUME", promptSize, promptColor,
-                TextAnchor.MiddleCenter, 0.05f, 0.28f, 0.95f, 0.52f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.28f, 0.95f, 0.52f, 0f, 0f, 0f, 0f);
 
             AddText(parent, "RestartPrompt", "A / X  RESTART", promptSize, promptColor,
-                TextAnchor.MiddleCenter, 0.05f, 0.02f, 0.55f, 0.26f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.02f, 0.55f, 0.26f, 0f, 0f, 0f, 0f);
 
             AddText(parent, "QuitPrompt", "B / Y  QUIT", promptSize, new Color(0.9f, 0.4f, 0.4f, 1f),
-                TextAnchor.MiddleCenter, 0.55f, 0.02f, 0.95f, 0.26f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.55f, 0.02f, 0.95f, 0.26f, 0f, 0f, 0f, 0f);
         }
 
         // ===================================================================
@@ -619,7 +614,7 @@ namespace JerryScripts.Presentation.HUD
 
             _rarityNameText = AddText(
                 _weaponBlockB, "RarityName", "Basic",
-                _fontSize - 4, Color.white, TextAnchor.MiddleCenter,
+                _fontSize - 4, Color.white, TextAlignmentOptions.Center,
                 0f, 0.78f, 0.30f, 1f,
                 _padding, 0f, -_padding, -_padding);
 
@@ -681,7 +676,7 @@ namespace JerryScripts.Presentation.HUD
             int labelSize = _fontSize - 14;
 
             Image[][] allSegments = new Image[labels.Length][];
-            Text[]    allValues   = new Text[labels.Length];
+            TextMeshProUGUI[] allValues = new TextMeshProUGUI[labels.Length];
 
             for (int i = 0; i < labels.Length; i++)
             {
@@ -697,7 +692,7 @@ namespace JerryScripts.Presentation.HUD
 
                 // Label (left ~18%)
                 AddText(row, $"Label_{labels[i]}", labels[i],
-                    labelSize, _textColor, TextAnchor.MiddleLeft,
+                    labelSize, _textColor, TextAlignmentOptions.MidlineLeft,
                     0f, 0f, 0.18f, 1f,
                     0f, 0f, 0f, 0f);
 
@@ -728,8 +723,8 @@ namespace JerryScripts.Presentation.HUD
                 allSegments[i] = segs;
 
                 // Numeric value text (right ~18%)
-                Text valueText = AddText(row, $"Value_{labels[i]}", "--",
-                    labelSize, _textColor, TextAnchor.MiddleRight,
+                TextMeshProUGUI valueText = AddText(row, $"Value_{labels[i]}", "--",
+                    labelSize, _textColor, TextAlignmentOptions.MidlineRight,
                     0.81f, 0f, 1f, 1f,
                     0f, 0f, 0f, 0f);
                 allValues[i] = valueText;
@@ -880,20 +875,20 @@ namespace JerryScripts.Presentation.HUD
 
             // Title
             AddText(_pauseScreenRoot, "PauseTitle", "PAUSED", 96, _textColor,
-                TextAnchor.MiddleCenter, 0f, 0.60f, 1f, 0.95f, _padding, 0f, -_padding, 0f);
+                TextAlignmentOptions.Center, 0f, 0.60f, 1f, 0.95f, _padding, 0f, -_padding, 0f);
 
             // Button prompts — vertically stacked, clear labels
             int promptSize = 56;
             Color promptColor = new Color(1f, 1f, 0.95f, 1f);
 
             AddText(_pauseScreenRoot, "ResumePrompt", "Trigger  —  RESUME", promptSize, promptColor,
-                TextAnchor.MiddleCenter, 0.05f, 0.38f, 0.95f, 0.58f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.38f, 0.95f, 0.58f, 0f, 0f, 0f, 0f);
 
             AddText(_pauseScreenRoot, "RestartPrompt", "A / X  —  RESTART", promptSize, promptColor,
-                TextAnchor.MiddleCenter, 0.05f, 0.18f, 0.95f, 0.38f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.18f, 0.95f, 0.38f, 0f, 0f, 0f, 0f);
 
             AddText(_pauseScreenRoot, "QuitPrompt", "B / Y  —  QUIT", promptSize, new Color(0.9f, 0.4f, 0.4f, 1f),
-                TextAnchor.MiddleCenter, 0.05f, 0.02f, 0.95f, 0.18f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.02f, 0.95f, 0.18f, 0f, 0f, 0f, 0f);
 
             _pauseScreenRoot.SetActive(false);
         }
@@ -925,17 +920,17 @@ namespace JerryScripts.Presentation.HUD
 
             // Title
             AddText(_deathScreenRoot, "DeathTitle", "YOU DIED", 96, new Color(0.9f, 0.2f, 0.2f, 1f),
-                TextAnchor.MiddleCenter, 0f, 0.55f, 1f, 0.95f, _padding, 0f, -_padding, 0f);
+                TextAlignmentOptions.Center, 0f, 0.55f, 1f, 0.95f, _padding, 0f, -_padding, 0f);
 
             // Button prompts — vertically stacked, clear labels
             int promptSize = 56;
             Color promptColor = new Color(1f, 1f, 0.95f, 1f);
 
             AddText(_deathScreenRoot, "RestartPrompt", "Trigger  —  RESTART", promptSize, promptColor,
-                TextAnchor.MiddleCenter, 0.05f, 0.22f, 0.95f, 0.45f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.22f, 0.95f, 0.45f, 0f, 0f, 0f, 0f);
 
             AddText(_deathScreenRoot, "QuitPrompt", "A / X  —  QUIT", promptSize, new Color(0.9f, 0.4f, 0.4f, 1f),
-                TextAnchor.MiddleCenter, 0.05f, 0.02f, 0.95f, 0.22f, 0f, 0f, 0f, 0f);
+                TextAlignmentOptions.Center, 0.05f, 0.02f, 0.95f, 0.22f, 0f, 0f, 0f, 0f);
 
             _deathScreenRoot.SetActive(false);
         }
@@ -988,20 +983,19 @@ namespace JerryScripts.Presentation.HUD
             StretchFill(bgGO.GetComponent<RectTransform>());
         }
 
-        private Text AddText(GameObject parent, string name, string content,
-            int fontSize, Color color, TextAnchor alignment,
+        private TextMeshProUGUI AddText(GameObject parent, string name, string content,
+            int fontSize, Color color, TextAlignmentOptions alignment,
             float aMinX, float aMinY, float aMaxX, float aMaxY,
             float oMinX, float oMinY, float oMaxX, float oMaxY)
         {
             GameObject go = CreateChild(parent, name);
-            Text t = go.AddComponent<Text>();
+            TextMeshProUGUI t = go.AddComponent<TextMeshProUGUI>();
             t.text = content;
-            t.font = _hudFont;
             t.fontSize = fontSize;
             t.color = color;
             t.alignment = alignment;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
+            t.enableWordWrapping = false;
+            t.overflowMode = TextOverflowModes.Overflow;
             t.raycastTarget = false;
             RectTransform r = go.GetComponent<RectTransform>();
             r.anchorMin = new Vector2(aMinX, aMinY);
