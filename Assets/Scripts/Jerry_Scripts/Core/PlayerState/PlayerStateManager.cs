@@ -136,10 +136,25 @@ namespace JerryScripts.Core.PlayerState
                 }
 
                 /// <inheritdoc/>
+                public void RequestPause()
+                {
+                        if (CurrentState != PlayerState.Running) return;
+                        TransitionTo(PlayerState.Paused);
+
+                        // Freeze the world — same pattern as TriggerDeath. Menu input via
+                        // InputActionReference is unaffected (new Input System uses unscaled time).
+                        // Restored to 1.0 in RequestResume / RequestRestart / RequestQuit.
+                        Time.timeScale = 0f;
+                }
+
+                /// <inheritdoc/>
                 public void RequestResume()
                 {
-                        if (CurrentState != PlayerState.Paused) return;
+                        // Always restore time scale before flipping state — even a no-op call
+                        // (resume from non-Paused) cleans up any leftover freeze.
+                        Time.timeScale = 1f;
 
+                        if (CurrentState != PlayerState.Paused) return;
                         TransitionTo(PlayerState.Running);
                 }
 

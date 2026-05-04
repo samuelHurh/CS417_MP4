@@ -59,6 +59,10 @@ namespace JerryScripts.Presentation.HUD
                  "to this so they appear at gaze-center. Required — pause/death screens skipped without it.")]
         [SerializeField] private Transform _headTransform;
 
+        [Header("Menu Input — Pause Toggle (used during Running / Paused)")]
+        [Tooltip("Pressing this in Running state pauses; in Paused state, unpauses (resumes).")]
+        [SerializeField] private InputActionReference _pauseToggleAction;
+
         [Header("Menu Input — Left Hand (used when paused/dead)")]
         [Tooltip("Trigger action on the left hand — Resume (paused) / Restart (dead).")]
         [SerializeField] private InputActionReference _leftTriggerAction;
@@ -235,6 +239,7 @@ namespace JerryScripts.Presentation.HUD
             SubscribeAction(_rightTriggerAction, OnMenuTrigger);
             SubscribeAction(_rightPrimaryAction, OnMenuPrimary);
             SubscribeAction(_rightSecondaryAction, OnMenuSecondary);
+            SubscribeAction(_pauseToggleAction, OnMenuPauseToggle);
         }
 
         private void UnsubscribeMenuInput()
@@ -245,6 +250,7 @@ namespace JerryScripts.Presentation.HUD
             UnsubscribeAction(_rightTriggerAction, OnMenuTrigger);
             UnsubscribeAction(_rightPrimaryAction, OnMenuPrimary);
             UnsubscribeAction(_rightSecondaryAction, OnMenuSecondary);
+            UnsubscribeAction(_pauseToggleAction, OnMenuPauseToggle);
         }
 
         private static void SubscribeAction(InputActionReference actionRef,
@@ -311,6 +317,25 @@ namespace JerryScripts.Presentation.HUD
 
             if (_currentDisplayState == PlayerState.Paused)
                 _stateWriter?.RequestQuit();
+        }
+
+        private void OnMenuPauseToggle(InputAction.CallbackContext _)
+        {
+            if (IsMenuInputBlocked()) return;
+
+            switch (_currentDisplayState)
+            {
+                case PlayerState.Running:
+                    _stateWriter?.RequestPause();
+                    break;
+                case PlayerState.Paused:
+                    _stateWriter?.RequestResume();
+                    break;
+                case PlayerState.Dead:
+                default:
+                    // Ignored — death screen has its own restart/quit input.
+                    break;
+            }
         }
 
         // ===================================================================
@@ -821,10 +846,21 @@ namespace JerryScripts.Presentation.HUD
         // Build — pause screen (floating at gaze-center, same style as death)
         // ===================================================================
 
+        /// <summary>
+        /// Resolves the parent transform for floating gaze-center panels (Pause / Death).
+        /// Prefers <see cref="Camera.main"/> (always at eye level in VR rigs) over the
+        /// Inspector-wired <c>_headTransform</c>. Returns null if neither resolves.
+        /// </summary>
+        private Transform ResolveGazeCenterAnchor()
+        {
+            if (Camera.main != null) return Camera.main.transform;
+            return _headTransform;
+        }
+
         private void BuildPauseScreen()
         {
-            if (_headTransform == null) return;
-            Transform headTransform = _headTransform;
+            Transform headTransform = ResolveGazeCenterAnchor();
+            if (headTransform == null) return;
 
             _pauseScreenRoot = new GameObject("PauseScreen_HUD");
             _pauseScreenRoot.transform.SetParent(headTransform, false);
@@ -868,8 +904,8 @@ namespace JerryScripts.Presentation.HUD
 
         private void BuildDeathScreen()
         {
-            if (_headTransform == null) return;
-            Transform headTransform = _headTransform;
+            Transform headTransform = ResolveGazeCenterAnchor();
+            if (headTransform == null) return;
 
             _deathScreenRoot = new GameObject("DeathScreen_HUD");
             _deathScreenRoot.transform.SetParent(headTransform, false);

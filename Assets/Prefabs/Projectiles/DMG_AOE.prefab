@@ -166,9 +166,10 @@ MonoBehaviour:
   groundingSampleRadius: 3
   radiusVisual: {fileID: 0}
   myVisual: {fileID: 3978320482817241108}
-  damagePerTick: 10
+  damagePerTick: 3
   damageTickInterval: 1
   playerLayerMask:
     serializedVersion: 2
     m_Bits: 0
   damageTickDelay: 0.25
+  damageSourceId: damage_aoe

@@ -60,6 +60,17 @@ MonoBehaviour:
     PitchVariance: 0
     HapticAmplitude: 0
     HapticDuration: 0
+  - EventType: 19
+    Clips:
+    - {fileID: 8300000, guid: 62a17227972c0114c9fef1c0c3b5f78a, type: 3}
+    MixerGroup: {fileID: -2000938079326354775, guid: d429945277db30945921660d28445840,
+      type: 2}
+    SpatialBlend: 1
+    Volume: 1
+    BasePitch: 1
+    PitchVariance: 0.05
+    HapticAmplitude: 0
+    HapticDuration: 0
   _hitConfirmDamageCap: 330
   _hitConfirmPitchFloor: 0.9
   _hitConfirmPitchCeiling: 1.4

@@ -19,6 +19,7 @@ GameObject:
   - component: {fileID: 5341149808274031913}
   - component: {fileID: 4628781646408015880}
   - component: {fileID: 2760123208149310466}
+  - component: {fileID: 4476882621941192282}
   m_Layer: 11
   m_Name: Chaser
   m_TagString: Untagged
@@ -281,6 +282,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::IFrameOnDamage
   _duration: 0.1
   _colliders: []
+--- !u!114 &4476882621941192282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5283674449251753505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0818737ba725022409779ddfd951d712, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyHealthBar
+  _localOffset: {x: 0, y: 1.2, z: 0}
+  _panelSize: {x: 1, y: 0.1}
+  _bgOpacity: 0.6
+  _bgColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+  _segmentCount: 10
+  _filledColor: {r: 0.9, g: 0.15, b: 0.15, a: 1}
+  _emptyColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
+  _gapFraction: 0.015
+  _hideOnDeath: 1
 --- !u!1 &5779392413667513470
 GameObject:
   m_ObjectHideFlags: 0
@@ -299,7 +321,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &920357548927589663
 RectTransform:
   m_ObjectHideFlags: 0

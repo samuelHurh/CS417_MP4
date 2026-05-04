@@ -16,13 +16,17 @@ GameObject:
   - component: {fileID: 793713480541903775}
   - component: {fileID: 1821667920319865693}
   - component: {fileID: 8990357158657440087}
-  m_Layer: 0
+  - component: {fileID: 8790835890614755600}
+  - component: {fileID: 2103178485478490067}
+  - component: {fileID: 9032277727979546215}
+  - component: {fileID: 8233736489645063370}
+  m_Layer: 11
   m_Name: Support
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &5474092205755080511
 Transform:
   m_ObjectHideFlags: 0
@@ -31,7 +35,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2858390840885581876}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.96128166, z: -0, w: 0.27556777}
+  m_LocalRotation: {x: 0, y: -0.96128094, z: 0, w: 0.27557027}
   m_LocalPosition: {x: 9.53, y: 1.22, z: 5.99}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -222,6 +226,92 @@ MonoBehaviour:
   arcHeightPerMeter: 0.25
   minArcHeight: 1
   maxArcHeight: 5
+--- !u!114 &8790835890614755600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2858390840885581876}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c6de38f13d6b1443b2c5a5a20ac08d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BNG.Damageable
+  Health: 500
+  SelfDestruct: 0
+  SelfDestructDelay: 0.1
+  SpawnOnDeath: {fileID: 0}
+  ActivateGameObjectsOnDeath: []
+  DeactivateGameObjectsOnDeath: []
+  DeactivateCollidersOnDeath: []
+  DestroyOnDeath: 1
+  DropOnDeath: 1
+  DestroyDelay: 0
+  Respawn: 0
+  RespawnTime: 10
+  RemoveBulletHolesOnDeath: 1
+  onDamaged:
+    m_PersistentCalls:
+      m_Calls: []
+  onDestroyed:
+    m_PersistentCalls:
+      m_Calls: []
+  onRespawn:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &2103178485478490067
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2858390840885581876}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0818737ba725022409779ddfd951d712, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyHealthBar
+  _localOffset: {x: 0, y: 1.2, z: 0}
+  _panelSize: {x: 1, y: 0.1}
+  _bgOpacity: 0.6
+  _bgColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
+  _segmentCount: 10
+  _filledColor: {r: 0.9, g: 0.15, b: 0.15, a: 1}
+  _emptyColor: {r: 0.3, g: 0.3, b: 0.3, a: 1}
+  _gapFraction: 0.015
+  _hideOnDeath: 1
+--- !u!114 &9032277727979546215
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2858390840885581876}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 12b41067b95da9e468972c80a2d6a898, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDeathRewards
+  _gemPrefab: {fileID: 7287766690045032550, guid: 0038d2684459cf34db7a29c8d13da808,
+    type: 3}
+  _gemCount: 3
+  _valuePerGem: 1
+  _postHitConfirmation: 1
+--- !u!114 &8233736489645063370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2858390840885581876}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ed2b481de723ac418b9aaa6cc3bd830, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::IFrameOnDamage
+  _duration: 0.1
+  _colliders: []
 --- !u!1 &5273632328140353965
 GameObject:
   m_ObjectHideFlags: 0
@@ -231,7 +321,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3981227152757848408}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: AttackCenter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -265,7 +355,7 @@ GameObject:
   - component: {fileID: 1256577928224163809}
   - component: {fileID: 982913649572954654}
   - component: {fileID: 4384618065107208275}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: forward_indicator
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -377,13 +467,13 @@ GameObject:
   - component: {fileID: 877363321846242442}
   - component: {fileID: 4461489615722658307}
   - component: {fileID: 458650674054452822}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: DisplayState
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6692942545595497303
 RectTransform:
   m_ObjectHideFlags: 0

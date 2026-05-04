@@ -46,6 +46,13 @@ namespace JerryScripts.Core.PlayerState
         void RequestRestart();
 
         /// <summary>
+        /// Transitions to <see cref="PlayerState.Paused"/> when currently
+        /// <see cref="PlayerState.Running"/>. No-op from any other state.
+        /// Pair with <see cref="RequestResume"/> for the unpause direction.
+        /// </summary>
+        void RequestPause();
+
+        /// <summary>
         /// Resumes gameplay from the <see cref="PlayerState.Paused"/> state.
         /// Transitions to <see cref="PlayerState.Running"/>.
         /// No-op if not currently paused.
