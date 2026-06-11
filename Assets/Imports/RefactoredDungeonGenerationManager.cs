@@ -82,11 +82,14 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     [Min(0)] public int loopConnectionCount = 2;
     [Min(1)] public int minStartEndGridDistance = 6;
     [Min(1)] public int maxLayoutAttempts = 80;
+    [Min(1)] public int minLootRoomGraphDistance = 2;
+    [Min(1)] public int maxLootRoomGraphDistance = 3;
 
     [Header("Instantiation")]
     public Transform origin;
     public GameObject hallway;
     public float hallwayBuffer = 20f;
+    [Min(0f)] public float hallwayEndInset = 0.08f;
     public LayerMask roomLayerMask;
 
     [Header("Room NavMesh")]
@@ -98,7 +101,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     public GameObject keyPickupPrefab;
     public GameObject lockedEndDoorPrefab;
     public GameObject endDoorSealPrefab;
-    public float nextDungeonTeleportDelay = 3f;
+    public float nextDungeonTeleportDelay = 0f;
 
     [Header("Enemies")]
     public GameObject[] enemyPrefabs;
@@ -112,6 +115,8 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     public float playerSpawnHeightOffset = 1f;
     public GameObject pistolRef;
     public GameObject magRef;
+
+    public GameObject canvasRef;
 
     [Header("Debug")]
     public bool drawGraphGizmos = true;
@@ -258,6 +263,9 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     private bool TryPlaceLootRoom()
     {
         List<RoomNode> candidates = new();
+        List<RoomNode> fallbackCandidates = new();
+        int minDistance = Mathf.Min(minLootRoomGraphDistance, maxLootRoomGraphDistance);
+        int maxDistance = Mathf.Max(minLootRoomGraphDistance, maxLootRoomGraphDistance);
 
         foreach (RoomNode node in nodes)
         {
@@ -266,8 +274,15 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
                 continue;
             }
 
-            if (GraphDistance(node, endNode, false) < GraphDistance(node, startNode, false)
-                && GetFreeDirections(node.gridPosition).Count > 0)
+            if (GetFreeDirections(node.gridPosition).Count == 0)
+            {
+                continue;
+            }
+
+            fallbackCandidates.Add(node);
+
+            int lootDistanceFromStart = node.graphDistanceFromStart + 1;
+            if (lootDistanceFromStart >= minDistance && lootDistanceFromStart <= maxDistance)
             {
                 candidates.Add(node);
             }
@@ -275,7 +290,28 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
         if (candidates.Count == 0)
         {
-            return false;
+            if (fallbackCandidates.Count == 0)
+            {
+                return false;
+            }
+
+            int targetDistance = Mathf.RoundToInt((minDistance + maxDistance) * 0.5f);
+            fallbackCandidates.Sort((left, right) =>
+            {
+                int leftScore = Mathf.Abs((left.graphDistanceFromStart + 1) - targetDistance);
+                int rightScore = Mathf.Abs((right.graphDistanceFromStart + 1) - targetDistance);
+                return leftScore.CompareTo(rightScore);
+            });
+
+            int bestScore = Mathf.Abs((fallbackCandidates[0].graphDistanceFromStart + 1) - targetDistance);
+            for (int i = 0; i < fallbackCandidates.Count; i++)
+            {
+                int score = Mathf.Abs((fallbackCandidates[i].graphDistanceFromStart + 1) - targetDistance);
+                if (score == bestScore)
+                {
+                    candidates.Add(fallbackCandidates[i]);
+                }
+            }
         }
 
         RoomNode anchor = candidates[UnityEngine.Random.Range(0, candidates.Count)];
@@ -527,7 +563,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         float centerDistance = alongX
             ? Mathf.Abs(edge.b.instance.transform.position.x - edge.a.instance.transform.position.x)
             : Mathf.Abs(edge.b.instance.transform.position.z - edge.a.instance.transform.position.z);
-        float length = centerDistance - aCenterToEntrance - bCenterToEntrance;
+        float length = centerDistance - aCenterToEntrance - bCenterToEntrance - hallwayEndInset * 2f;
 
         if (length <= 0.01f)
         {
@@ -535,7 +571,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         }
 
         Vector3 directionVector = DirectionToVector(direction);
-        Vector3 center = edge.a.instance.transform.position + directionVector * (aCenterToEntrance + length * 0.5f);
+        Vector3 center = edge.a.instance.transform.position + directionVector * (aCenterToEntrance + hallwayEndInset + length * 0.5f);
         center.y = edge.a.instance.transform.position.y;
         Quaternion rotation = alongX ? Quaternion.Euler(0f, 90f, 0f) : Quaternion.identity;
 
@@ -552,14 +588,15 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
             return;
         }
 
-        Vector3 hallwayCenter = roomCenter + direction * (centerToEntrance + length * 0.5f);
+        float adjustedLength = Mathf.Max(0.01f, length - hallwayEndInset * 2f);
+        Vector3 hallwayCenter = roomCenter + direction * (centerToEntrance + hallwayEndInset + adjustedLength * 0.5f);
         Quaternion hallwayRotation = Mathf.Abs(direction.x) > 0f
             ? Quaternion.Euler(0f, 90f, 0f)
             : Quaternion.identity;
 
         GameObject spawnedHallway = Instantiate(hallway, hallwayCenter, hallwayRotation);
         spawnedHallway.name = "Hallway " + spawnedHallways.Count;
-        spawnedHallway.transform.localScale += new Vector3(0f, 0f, length);
+        spawnedHallway.transform.localScale += new Vector3(0f, 0f, adjustedLength);
         spawnedHallways.Add(spawnedHallway);
     }
 
@@ -750,6 +787,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         GameObject doorPrefab = endDoorSealPrefab != null ? endDoorSealPrefab : lockedEndDoorPrefab;
         if (doorPrefab == null || endNode == null || endNode.instance == null)
         {
+            Debug.LogWarning("Cannot spawn end room seal. Assign End Door Seal Prefab on the dungeon manager and make sure an end room was generated.", this);
             return;
         }
 
@@ -768,11 +806,10 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
             int entranceId = edge.EntranceFor(endNode);
             Transform entrance = endRoomPrefab.potentialEntrances[entranceId].transform;
-            lockedEndDoorInstance = Instantiate(doorPrefab, entrance.position, entrance.rotation);
-            if (entranceId % 2 != 0)
-            {
-                lockedEndDoorInstance.transform.eulerAngles += new Vector3(0f, 90f, 0f);
-            }
+            lockedEndDoorInstance = Instantiate(doorPrefab, entrance.position, GetEntranceBlockerRotation(entrance, entranceId), endNode.instance.transform);
+            lockedEndDoorInstance.name = doorPrefab.name + " Runtime";
+            EnsureBlockingCollider(lockedEndDoorInstance);
+            ConfigureKeyRoomUnlockCallers();
 
             return;
         }
@@ -791,23 +828,41 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
             return;
         }
 
-        EndRoomCaller caller = keyNode.instance.GetComponentInChildren<EndRoomCaller>(true);
-        if (caller == null)
+        ConfigureKeyRoomUnlockCallers();
+    }
+
+    private void ConfigureKeyRoomUnlockCallers()
+    {
+        if (keyNode?.instance == null)
         {
             return;
         }
 
-        caller.dungeonManager = this;
-        caller.endDoor = lockedEndDoorInstance;
-
-        Button button = caller.GetComponent<Button>();
-        if (button == null)
+        EndRoomCaller[] callers = keyNode.instance.GetComponentsInChildren<EndRoomCaller>(true);
+        foreach (EndRoomCaller caller in callers)
         {
-            button = caller.GetComponentInChildren<Button>(true);
+            caller.dungeonManager = this;
+            caller.endDoor = lockedEndDoorInstance;
         }
 
-        if (button != null)
+        Button[] buttons = keyNode.instance.GetComponentsInChildren<Button>(true);
+        if (buttons.Length == 0)
         {
+            Debug.LogWarning("Key room has no BNG Button to unlock the end room seal.", keyNode.instance);
+            return;
+        }
+
+        foreach (Button button in buttons)
+        {
+            EndRoomCaller caller = button.GetComponent<EndRoomCaller>();
+            if (caller == null)
+            {
+                caller = button.gameObject.AddComponent<EndRoomCaller>();
+            }
+
+            caller.dungeonManager = this;
+            caller.endDoor = lockedEndDoorInstance;
+            button.onButtonDown.RemoveListener(caller.RemoveEndDoor);
             button.onButtonDown.AddListener(caller.RemoveEndDoor);
         }
     }
@@ -867,6 +922,7 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         if (dungeonLevel >= finalDungeonLevel)
         {
             Debug.Log("You win");
+            canvasRef.SetActive(true);
             yield break;
         }
 
@@ -875,10 +931,10 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
         Vector3 nextStartPosition = GetStartRoomPlayerPosition();
         Debug.Log("Generated dungeon level " + dungeonLevel + " at origin " + (origin != null ? origin.position.ToString() : "None") + ". Next player start: " + nextStartPosition, this);
 
-        if (delaySeconds > 0f)
-        {
-            yield return new WaitForSecondsRealtime(delaySeconds);
-        }
+        // if (delaySeconds > 0f)
+        // {
+        //     yield return new WaitForSecondsRealtime(delaySeconds);
+        // }
 
         TeleportPlayerToPosition(nextStartPosition);
     }
@@ -1067,6 +1123,12 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
 
     private void ClearDungeon()
     {
+        if (lockedEndDoorInstance != null)
+        {
+            Destroy(lockedEndDoorInstance);
+            lockedEndDoorInstance = null;
+        }
+
         foreach (RoomNode node in nodes)
         {
             if (node.instance != null)
@@ -1512,6 +1574,50 @@ public class RefactoredDungeonGenerationManager : MonoBehaviour
     {
         Vector3 offset = entrance.position - roomCenter.position;
         return Mathf.Max(Mathf.Abs(offset.x), Mathf.Abs(offset.z));
+    }
+
+    private static Quaternion GetEntranceBlockerRotation(Transform entrance, int entranceId)
+    {
+        Quaternion rotation = entrance.rotation;
+        if (entranceId % 2 != 0)
+        {
+            rotation *= Quaternion.Euler(0f, 90f, 0f);
+        }
+
+        return rotation;
+    }
+
+    private static void EnsureBlockingCollider(GameObject seal)
+    {
+        if (seal == null || HasUsableBlockingCollider(seal))
+        {
+            return;
+        }
+
+        BoxCollider fallbackCollider = seal.AddComponent<BoxCollider>();
+        fallbackCollider.size = new Vector3(2f, 2f, 1f);
+    }
+
+    private static bool HasUsableBlockingCollider(GameObject root)
+    {
+        Collider[] colliders = root.GetComponentsInChildren<Collider>(true);
+        foreach (Collider collider in colliders)
+        {
+            if (collider == null || !collider.enabled || collider.isTrigger)
+            {
+                continue;
+            }
+
+            MeshCollider meshCollider = collider as MeshCollider;
+            if (meshCollider != null && meshCollider.sharedMesh == null)
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     private static RoomPrefab EnsureRoomPrefab(GameObject instance)

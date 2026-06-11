@@ -3140,7 +3140,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6156040744406870013
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3967,7 +3967,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   AcceptableMagazineName: PistolClip
   AttachedWeapon: {fileID: 3993760566134067081}
-  InsertSpeed: 1
+  InsertSpeed: 10000
   ClipSnapDistance: 0.04
   ClipUnsnapDistance: 0.1
   EjectForce: 1.25
@@ -4868,7 +4868,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7060412029694503450}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b5b1b54556836a49948cf0f09394c28, type: 3}
   m_Name: 

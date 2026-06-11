@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using BNG;
 using JerryScripts.Core.PlayerState;
 using TMPro;
+using Unity.Burst.Intrinsics;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -55,6 +57,17 @@ public sealed class PurchaseStation : MonoBehaviour
     [Min(0)]
     [SerializeField] private int _weaponCost = 100;
 
+    [Header("Weapon Slot 2")]
+    [Tooltip("Optional second generated weapon prefab. Supports GeneratedWeaponManager or GeneratedShotgunManager.")]
+    [SerializeField] private GameObject _weapon2Prefab;
+
+    [Tooltip("World-space anchor where the second weapon preview spawns.")]
+    [SerializeField] private Transform _weapon2SpawnPoint;
+
+    [Tooltip("Currency cost to purchase the second weapon.")]
+    [Min(0)]
+    [SerializeField] private int _weapon2Cost = 100;
+
     [Header("Weapon Rarity")]
     [Tooltip("Fallback tier if no RefactoredDungeonGenerationManager exists in the scene.")]
     [SerializeField] private GeneratedWeaponManager.WeaponRarityTier _weaponRarityTier = GeneratedWeaponManager.WeaponRarityTier.Common;
@@ -67,6 +80,9 @@ public sealed class PurchaseStation : MonoBehaviour
 
     [Tooltip("Same as above but for the weapon button.")]
     [SerializeField] private Transform _weaponButtonAnchor;
+
+    [Tooltip("Same as above but for the second weapon button.")]
+    [SerializeField] private Transform _weapon2ButtonAnchor;
 
     [Tooltip("Local offset from the button anchor where the price label sits. " +
              "Default (0, 0.3, 0) places it 30 cm above the button.")]
@@ -111,21 +127,28 @@ public sealed class PurchaseStation : MonoBehaviour
     [Tooltip("Text shown after the slot is purchased.")]
     [SerializeField] private string _soldLabelText = "SOLD";
 
+    [SerializeField] private List<GameObject> shotguns;
+
     private GameObject _spawnedHealing;
     private GameObject _spawnedWeapon;
+    private GameObject _spawnedWeapon2;
     private bool _healingPurchased;
     private bool _weaponPurchased;
+    private bool _weapon2Purchased;
 
     private TextMeshProUGUI _healingPriceText;
     private TextMeshProUGUI _weaponPriceText;
+    private TextMeshProUGUI _weapon2PriceText;
     private GameObject _healingPriceLabel;
     private GameObject _weaponPriceLabel;
+    private GameObject _weapon2PriceLabel;
     private Camera _cachedCamera;
 
     private void Start()
     {
         SpawnHealingPreview();
         SpawnWeaponPreview();
+        SpawnWeapon2Preview();
         BuildPriceLabels();
     }
 
@@ -188,6 +211,62 @@ public sealed class PurchaseStation : MonoBehaviour
         SetItemInteractable(_spawnedWeapon, interactable: false);
     }
 
+    private void SpawnWeapon2Preview()
+    {
+        if (_weapon2Prefab == null || _weapon2SpawnPoint == null)
+        {
+            Debug.LogWarning("[PurchaseStation] Weapon 2 slot prefab or spawn point is null - slot disabled.", this);
+            return;
+        }
+
+        GameObject staging = new GameObject("PurchaseStaging_Weapon2");
+        staging.SetActive(false);
+
+        if (ResolveWeaponRarityTier() == GeneratedWeaponManager.WeaponRarityTier.Common)
+        {
+            _spawnedWeapon2 = Instantiate(shotguns[0], staging.transform);
+            Debug.Log("starter shotgun" + _spawnedWeapon2.name);
+        } else if (ResolveWeaponRarityTier() == GeneratedWeaponManager.WeaponRarityTier.Rare)
+        {
+            _spawnedWeapon2 = Instantiate(shotguns[1], staging.transform);
+            Debug.Log("mid shotgun" + _spawnedWeapon2.name);
+        } else
+        {
+           _spawnedWeapon2 = Instantiate(shotguns[2], staging.transform);
+           Debug.Log("best shotgun" + _spawnedWeapon2.name);
+        }
+
+        //_spawnedWeapon2 = Instantiate(_weapon2Prefab, staging.transform);
+        // GeneratedWeaponManager.WeaponRarityTier rarityTier = ResolveWeaponRarityTier();
+
+        // var generatedWeaponManager = _spawnedWeapon2.GetComponent<GeneratedWeaponManager>();
+        // if (generatedWeaponManager != null)
+        // {
+        //     generatedWeaponManager.rarityTier = rarityTier;
+        // }
+
+        // var generatedShotgunManager = _spawnedWeapon2.GetComponent<GeneratedShotgunManager>();
+        // if (generatedShotgunManager != null)
+        // {
+        //     generatedShotgunManager.rarityTier = rarityTier;
+        // }
+
+        // if (generatedWeaponManager == null && generatedShotgunManager == null)
+        // {
+        //     Debug.LogWarning(
+        //         "[PurchaseStation] Weapon 2 prefab has no generated weapon manager - rarity tier won't be applied.",
+        //         this);
+        // }
+
+        _spawnedWeapon2.transform.SetParent(_weapon2SpawnPoint, worldPositionStays: false);
+        _spawnedWeapon2.transform.localPosition = Vector3.zero;
+        _spawnedWeapon2.transform.localRotation = Quaternion.identity;
+
+        Destroy(staging);
+
+        SetItemInteractable(_spawnedWeapon2, interactable: false);
+    }
+
     private GeneratedWeaponManager.WeaponRarityTier ResolveWeaponRarityTier()
     {
         RefactoredDungeonGenerationManager dungeonGenerationManager = FindAnyObjectByType<RefactoredDungeonGenerationManager>();
@@ -241,6 +320,15 @@ public sealed class PurchaseStation : MonoBehaviour
                 string.Format(_priceLabelFormat, _weaponCost),
                 "PriceLabel_Weapon");
             _weaponPriceText = _weaponPriceLabel.GetComponentInChildren<TextMeshProUGUI>();
+        }
+
+        if (_weapon2ButtonAnchor != null)
+        {
+            _weapon2PriceLabel = BuildPriceLabel(
+                _weapon2ButtonAnchor,
+                string.Format(_priceLabelFormat, _weapon2Cost),
+                "PriceLabel_Weapon2");
+            _weapon2PriceText = _weapon2PriceLabel.GetComponentInChildren<TextMeshProUGUI>();
         }
     }
 
@@ -312,6 +400,7 @@ public sealed class PurchaseStation : MonoBehaviour
         }
         BillboardLabel(_healingPriceLabel);
         BillboardLabel(_weaponPriceLabel);
+        BillboardLabel(_weapon2PriceLabel);
     }
 
     private void BillboardLabel(GameObject label)
@@ -354,6 +443,17 @@ public sealed class PurchaseStation : MonoBehaviour
             spawnedItem: _spawnedWeapon,
             priceText: _weaponPriceText,
             onSuccess: () => _weaponPurchased = true);
+    }
+
+    public void OnWeapon2PurchaseButtonPressed()
+    {
+        TryPurchase(
+            slotName: "weapon 2",
+            cost: _weapon2Cost,
+            isAlreadyPurchased: _weapon2Purchased,
+            spawnedItem: _spawnedWeapon2,
+            priceText: _weapon2PriceText,
+            onSuccess: () => _weapon2Purchased = true);
     }
 
     private void TryPurchase(string slotName, int cost, bool isAlreadyPurchased, GameObject spawnedItem, TextMeshProUGUI priceText, System.Action onSuccess)

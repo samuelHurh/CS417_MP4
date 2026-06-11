@@ -24,6 +24,7 @@ public sealed class BNGWeaponBridge : MonoBehaviour
 {
     private RaycastWeapon _currentWeapon;
     private GeneratedWeaponManager _currentManager;
+    private GeneratedShotgunManager _currentShotgunManager;
     private PlayerStateManager _psm;
 
     private int _lastPublishedAmmo = -1;
@@ -50,6 +51,9 @@ public sealed class BNGWeaponBridge : MonoBehaviour
             _currentWeapon = nowHeld;
             _currentManager = nowHeld != null
                 ? nowHeld.GetComponent<GeneratedWeaponManager>()
+                : null;
+            _currentShotgunManager = nowHeld != null
+                ? nowHeld.GetComponent<GeneratedShotgunManager>()
                 : null;
             PublishStatsForCurrent();
         }
@@ -104,13 +108,24 @@ public sealed class BNGWeaponBridge : MonoBehaviour
 
     private void PublishStatsForCurrent()
     {
-        if (_currentManager == null) return;
+        int magCapacity = _currentWeapon != null ? _currentWeapon.GetMaxBulletCount() : 0;
+
+        if (_currentManager == null && _currentShotgunManager == null) return;
+
+        if (_currentShotgunManager != null)
+        {
+            HUDWeaponBus.PublishStatsChanged(new WeaponStatsSnapshot(
+                _currentShotgunManager.MaxRarityRoll,
+                _currentShotgunManager.weaponDamageScale,
+                magCapacity,
+                _currentShotgunManager.recoilIntensityScale,
+                _currentShotgunManager.projectileVelocityScale));
+            return;
+        }
 
         int maxRarityRoll = Mathf.Max(
             _currentManager.generatedPackage.slideRarity,
             _currentManager.generatedPackage.gripRarity);
-
-        int magCapacity = _currentWeapon != null ? _currentWeapon.GetMaxBulletCount() : 0;
 
         HUDWeaponBus.PublishStatsChanged(new WeaponStatsSnapshot(
             maxRarityRoll,

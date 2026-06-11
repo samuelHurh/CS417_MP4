@@ -53,6 +53,7 @@ MonoBehaviour:
     type: 3}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 40598ecf603ac4d41b1f525da75d9d89, type: 2}
 --- !u!1 &411370652482284942
 GameObject:
   m_ObjectHideFlags: 0
@@ -284,7 +285,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c22777d6e868e4f2fb421913386b154e, type: 2}
+  - {fileID: 2100000, guid: 40598ecf603ac4d41b1f525da75d9d89, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -5126,6 +5127,13 @@ MonoBehaviour:
   enemies:
   - {fileID: 5283674449251753505, guid: d9458a64113494648b95ad7648e61499, type: 3}
   - {fileID: 5283674449251753505, guid: d9458a64113494648b95ad7648e61499, type: 3}
+  secondWaveSpawns: []
+  secondWaveEnemies: []
+  thirdWaveSpawns: []
+  thirdWaveEnemies: []
+  enemySpawnIndicatorPrefab: {fileID: 993214187965045737, guid: 473710af34067b0499e4ad9b0e87faed,
+    type: 3}
+  spawnIndicatorDelay: 2.5
   squadManager: {fileID: 0}
   playerTarget: {fileID: 0}
   navMeshSpawnSampleRadius: 2
@@ -5204,6 +5212,7 @@ MonoBehaviour:
     type: 3}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 40598ecf603ac4d41b1f525da75d9d89, type: 2}
 --- !u!1 &4562770815640278557
 GameObject:
   m_ObjectHideFlags: 0
@@ -5495,6 +5504,7 @@ MonoBehaviour:
     type: 3}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 40598ecf603ac4d41b1f525da75d9d89, type: 2}
 --- !u!1 &6449643572728552880
 GameObject:
   m_ObjectHideFlags: 0
@@ -5719,6 +5729,7 @@ MonoBehaviour:
     type: 3}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 40598ecf603ac4d41b1f525da75d9d89, type: 2}
 --- !u!1 &8908909860086587048
 GameObject:
   m_ObjectHideFlags: 0

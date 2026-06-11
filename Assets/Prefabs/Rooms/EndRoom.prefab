@@ -4396,7 +4396,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 91db08e7b8d3e21489cd0900d33cc2fa, type: 2}
+  - {fileID: 2100000, guid: 720ea100b5a5ea741a0e79cfb3ab65c6, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -4530,6 +4530,7 @@ MonoBehaviour:
   doorPrefab: {fileID: 0}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 720ea100b5a5ea741a0e79cfb3ab65c6, type: 2}
 --- !u!1 &6299470337455372735
 GameObject:
   m_ObjectHideFlags: 0
@@ -4581,6 +4582,7 @@ MonoBehaviour:
   doorPrefab: {fileID: 0}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 720ea100b5a5ea741a0e79cfb3ab65c6, type: 2}
 --- !u!1 &7259891469321477836
 GameObject:
   m_ObjectHideFlags: 0
@@ -4632,6 +4634,7 @@ MonoBehaviour:
   doorPrefab: {fileID: 0}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 720ea100b5a5ea741a0e79cfb3ab65c6, type: 2}
 --- !u!1 &8808530311331446475
 GameObject:
   m_ObjectHideFlags: 0
@@ -4683,6 +4686,7 @@ MonoBehaviour:
   doorPrefab: {fileID: 0}
   wall: {fileID: 0}
   door: {fileID: 0}
+  roomMat: {fileID: 2100000, guid: 720ea100b5a5ea741a0e79cfb3ab65c6, type: 2}
 --- !u!1001 &201508643936331018
 PrefabInstance:
   m_ObjectHideFlags: 0

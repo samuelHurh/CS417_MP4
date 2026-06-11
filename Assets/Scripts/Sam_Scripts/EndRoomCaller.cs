@@ -15,12 +15,12 @@ public class EndRoomCaller : MonoBehaviour
         if (dungeonManager != null)
         {
             dungeonManager.UnlockEndRoom();
-            return;
         }
 
         if (endDoor != null)
         {
-            endDoor.SetActive(false);
+            Destroy(endDoor);
+            endDoor = null;
         }
     }
 }

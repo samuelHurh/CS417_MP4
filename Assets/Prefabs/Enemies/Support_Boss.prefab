@@ -245,7 +245,7 @@ MonoBehaviour:
   ActivateGameObjectsOnDeath: []
   DeactivateGameObjectsOnDeath: []
   DeactivateCollidersOnDeath: []
-  DestroyOnDeath: 0
+  DestroyOnDeath: 1
   DropOnDeath: 1
   DestroyDelay: 0
   Respawn: 0
@@ -310,7 +310,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ed2b481de723ac418b9aaa6cc3bd830, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::IFrameOnDamage
-  _duration: 0.1
+  _duration: 0
   _colliders: []
 --- !u!1 &5273632328140353965
 GameObject:

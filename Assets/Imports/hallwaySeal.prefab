@@ -267,14 +267,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Shape:
     rid: 5306028113995497472
-  m_Size: {x: 2, y: 2, z: 1}
-  m_Rotation: {x: 0, y: 0, z: 0, w: 1}
-  m_PivotLocation: 0
-  m_PivotPosition: {x: 0, y: 0, z: 0}
+  m_ShapeRotation: {x: 0, y: 0, z: 0, w: 1}
   m_UnmodifiedMeshVersion: 2623
-  m_ShapeBox:
-    m_Center: {x: 0, y: 0, z: 0}
-    m_Extent: {x: 1, y: 1, z: 0.5}
+  m_Size: {x: 2, y: 2, z: 1}
+  m_LocalCenter: {x: 0, y: 0, z: 0}
   references:
     version: 2
     RefIds:
@@ -298,10 +294,15 @@ MeshRenderer:
   m_ReflectionProbeUsage: 1
   m_RayTracingMode: 2
   m_RayTraceProcedural: 0
+  m_RayTracingAccelStructBuildFlagsOverride: 0
+  m_RayTracingAccelStructBuildFlags: 1
+  m_SmallMeshCulling: 1
+  m_ForceMeshLod: -1
+  m_MeshLodSelectionBias: 0
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: c22777d6e868e4f2fb421913386b154e, type: 2}
+  - {fileID: 0}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -319,9 +320,11 @@ MeshRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
+  m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &106474704682780251
 MeshFilter:

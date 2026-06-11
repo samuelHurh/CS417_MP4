@@ -42,6 +42,7 @@ namespace BNG {
         /// Check if Time.time - lastEjectTime is greater than this before reattaching a magazine
         /// </summary>
         public float ReattachInterval = 0.2f;
+        public float RecentlyGrabbedAttachDelay = 0.1f;
 
         public Grabbable HeldMagazine = null;
         // Used for magazine type reload
@@ -129,7 +130,7 @@ namespace BNG {
 
                 MagazineDistance = Vector3.Distance(transform.position, HeldMagazine.transform.position);
 
-                bool clipRecentlyGrabbed = Time.time - HeldMagazine.LastGrabTime < 1f;
+                bool clipRecentlyGrabbed = Time.time - HeldMagazine.LastGrabTime < RecentlyGrabbedAttachDelay;
 
                 // Snap Magazine In Place
                 if (MagazineDistance <= ClipSnapDistance) {

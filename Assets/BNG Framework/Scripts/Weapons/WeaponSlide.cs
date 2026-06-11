@@ -145,7 +145,7 @@ namespace BNG {
                 // Check if we reached the end and can fire an event when 
                 if (transform.localPosition.z <= MinLocalZ) {
                     transform.localPosition = new Vector3(initialLocalPos.x, initialLocalPos.y, MinLocalZ);
-                    if (slidingBack && !doingBlowBack && !blowBackReturn) {
+                    if (slidingBack && !doingBlowBack && !blowBackReturn && CanTriggerSlideBackCharge()) {
                         onSlideBack();
                     }                    
                 }
@@ -272,6 +272,10 @@ namespace BNG {
             //        onSlideForward();
             //    }
             //}
+        }
+
+        protected virtual bool CanTriggerSlideBackCharge() {
+            return true;
         }
 
         public virtual void LockBack() {

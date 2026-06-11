@@ -17,6 +17,7 @@ public class Entrance : MonoBehaviour
     public GameObject doorPrefab;
     public GameObject wall;
     public GameObject door;
+    public Material roomMat;
 
     //This function should be called upon room creation
     public virtual void InitiateEntrance(Vector3 pos) {
@@ -31,6 +32,7 @@ public class Entrance : MonoBehaviour
             spawnRotation.eulerAngles += new Vector3(0,90,0);
         }
         wall = Instantiate(entrancePrefab, pos, spawnRotation);
+        wall.GetComponent<Renderer>().material = roomMat;
         //Debug.Log("Entrance instantiated at: " + this.transform.position);
     }
 
